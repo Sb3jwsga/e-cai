@@ -69,14 +69,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         <p className="mb-6 text-sm text-center text-slate-500">Sistem Presensi QR Code Terintegrasi</p>
 
         <div className={cn(
-          "flex items-center justify-center gap-2 mb-6 py-1.5 px-3 rounded-full border text-[10px] font-bold uppercase tracking-wider mx-auto w-fit",
+          "flex items-center justify-center gap-2 mb-6 py-1.5 px-3 rounded-full border text-[10px] font-bold uppercase tracking-wider mx-auto w-fit transition-all",
           syncStatus === 'SUCCESS' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-          syncStatus === 'ERROR' ? "bg-amber-50 text-amber-600 border-amber-100" :
+          syncStatus === 'ERROR' ? "bg-amber-50 text-amber-600 border-amber-100 cursor-pointer hover:bg-amber-100" :
           "bg-slate-50 text-slate-400 border-slate-100"
-        )}>
+        )}
+        onClick={() => syncStatus === 'ERROR' && window.location.reload()}
+        >
           <RefreshCw className={cn("w-3 h-3", isSyncing && "animate-spin")} />
           {syncStatus === 'SUCCESS' ? 'Cloud Data Synced' : 
-           syncStatus === 'ERROR' ? 'Cloud Sync Failed (Using Local)' :
+           syncStatus === 'ERROR' ? 'Sync Failed (Click to Retry)' :
            'Connecting to Cloud...'}
         </div>
 

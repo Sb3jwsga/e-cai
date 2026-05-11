@@ -52,40 +52,49 @@ export const pullFromSpreadsheet = async () => {
     return null;
   }
 
+  console.log('Attempting to pull data from:', url);
+
   try {
-    const response = await fetch(`${url}?action=readAll`);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const response = await fetch(`${url}?action=readAll`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     const data = await response.json();
+    console.log('Cloud data received:', Object.keys(data));
     
     // Convert all values to string and keys to lowercase to avoid comparison issues
     const sanitize = (list: any[]) => {
-      if (!Array.isArray(list)) return [];
+      if (!list || !Array.isArray(list)) return [];
       return list.map(item => {
         const newItem: any = {};
         Object.keys(item).forEach(key => {
-          newItem[key.toLowerCase().trim()] = String(item[key]);
+          newItem[key.toLowerCase().trim()] = item[key] !== null && item[key] !== undefined ? String(item[key]) : '';
         });
         return newItem;
       });
     };
 
-    if (data.users && data.users.length > 0) {
-      console.log('Pulled users:', data.users.length);
+    if (data.users && Array.isArray(data.users)) {
       db.setUsers(sanitize(data.users));
     }
-    if (data.peserta && data.peserta.length > 0) {
+    if (data.peserta && Array.isArray(data.peserta)) {
       db.setPeserta(sanitize(data.peserta));
     }
-    if (data.events && data.events.length > 0) {
+    if (data.events && Array.isArray(data.events)) {
       db.setEvents(sanitize(data.events));
     }
-    if (data.attendance && data.attendance.length > 0) {
+    if (data.attendance && Array.isArray(data.attendance)) {
       db.setAttendance(sanitize(data.attendance));
     }
     
     return data;
   } catch (error) {
-    console.error('Pull Error:', error);
+    console.error('Pull Error Details:', error);
     return null;
   }
 };
