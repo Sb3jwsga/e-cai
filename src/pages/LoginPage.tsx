@@ -43,7 +43,17 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const handleStaffLogin = (e: React.FormEvent) => {
     e.preventDefault();
     const users = db.getUsers();
-    const found = users.find(u => u.username === username && u.password === password);
+    
+    // Debug available users in console
+    console.log('Attempting login. Available users:', users.map(u => u.username));
+
+    const cleanUsername = username.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    const found = users.find(u => 
+      u.username.toLowerCase().trim() === cleanUsername && 
+      u.password.trim() === cleanPassword
+    );
 
     if (found) {
       onLogin({
@@ -52,7 +62,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         level: found.level
       });
     } else {
-      setError('Username atau password salah');
+      setError(`Username atau password salah. Pastikan data di spreadsheet sudah benar. (Username input: "${username}")`);
     }
   };
 

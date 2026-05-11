@@ -65,22 +65,30 @@ export const pullFromSpreadsheet = async () => {
     }
     
     const data = await response.json();
-    console.log('Cloud data received:', Object.keys(data));
+    console.log('Cloud data raw result:', data);
     
     // Convert all values to string and keys to lowercase to avoid comparison issues
     const sanitize = (list: any[]) => {
-      if (!list || !Array.isArray(list)) return [];
+      if (!list || !Array.isArray(list)) {
+        console.warn('Expected array but got:', list);
+        return [];
+      }
       return list.map(item => {
         const newItem: any = {};
         Object.keys(item).forEach(key => {
-          newItem[key.toLowerCase().trim()] = item[key] !== null && item[key] !== undefined ? String(item[key]) : '';
+          const cleanKey = key.toLowerCase().trim();
+          const rawValue = item[key];
+          // Handle potential numeric values specifically
+          newItem[cleanKey] = (rawValue !== null && rawValue !== undefined) ? String(rawValue).trim() : '';
         });
         return newItem;
       });
     };
 
     if (data.users && Array.isArray(data.users)) {
-      db.setUsers(sanitize(data.users));
+      const sanitizedUsers = sanitize(data.users);
+      console.log('Sanitized Users for DB:', sanitizedUsers);
+      db.setUsers(sanitizedUsers);
     }
     if (data.peserta && Array.isArray(data.peserta)) {
       db.setPeserta(sanitize(data.peserta));
