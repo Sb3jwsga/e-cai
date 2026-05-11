@@ -1,0 +1,8 @@
+{
+  "name": "EventQR Absensi",
+  "description": "Aplikasi absensi event menggunakan scan QR Code untuk panitia, peserta, dan admin.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": []
+}
