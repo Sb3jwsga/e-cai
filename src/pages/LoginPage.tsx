@@ -22,14 +22,20 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [scanning, setScanning] = useState(false);
   const [isIframe, setIsIframe] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'IDLE' | 'SYNCING' | 'SUCCESS' | 'ERROR'>('IDLE');
 
   useEffect(() => {
     setIsIframe(window.self !== window.top);
-    // Auto sync on mount to ensure latest users are available
     const initialSync = async () => {
+      if (!import.meta.env.VITE_APPSCRIPT_URL) {
+        setSyncStatus('ERROR');
+        return;
+      }
+      setSyncStatus('SYNCING');
       setIsSyncing(true);
-      await pullFromSpreadsheet();
+      const res = await pullFromSpreadsheet();
       setIsSyncing(false);
+      setSyncStatus(res ? 'SUCCESS' : 'ERROR');
     };
     initialSync();
   }, []);
@@ -60,7 +66,19 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         <h1 className="mb-2 text-2xl font-bold text-center text-slate-800 tracking-tight">EventScan Pro</h1>
-        <p className="mb-8 text-sm text-center text-slate-500">Sistem Presensi QR Code Terintegrasi</p>
+        <p className="mb-6 text-sm text-center text-slate-500">Sistem Presensi QR Code Terintegrasi</p>
+
+        <div className={cn(
+          "flex items-center justify-center gap-2 mb-6 py-1.5 px-3 rounded-full border text-[10px] font-bold uppercase tracking-wider mx-auto w-fit",
+          syncStatus === 'SUCCESS' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+          syncStatus === 'ERROR' ? "bg-amber-50 text-amber-600 border-amber-100" :
+          "bg-slate-50 text-slate-400 border-slate-100"
+        )}>
+          <RefreshCw className={cn("w-3 h-3", isSyncing && "animate-spin")} />
+          {syncStatus === 'SUCCESS' ? 'Cloud Data Synced' : 
+           syncStatus === 'ERROR' ? 'Cloud Sync Failed (Using Local)' :
+           'Connecting to Cloud...'}
+        </div>
 
         <div className="flex mb-6 bg-slate-100 p-1 rounded-xl">
           <button

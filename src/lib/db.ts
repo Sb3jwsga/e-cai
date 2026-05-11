@@ -47,16 +47,41 @@ export const syncToSpreadsheet = async (table: string, action: 'create' | 'updat
 
 export const pullFromSpreadsheet = async () => {
   const url = import.meta.env.VITE_APPSCRIPT_URL;
-  if (!url) return null;
+  if (!url) {
+    console.warn('VITE_APPSCRIPT_URL is missing. Please check your .env file.');
+    return null;
+  }
 
   try {
     const response = await fetch(`${url}?action=readAll`);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = await response.json();
     
-    if (data.users) db.setUsers(data.users);
-    if (data.peserta) db.setPeserta(data.peserta);
-    if (data.events) db.setEvents(data.events);
-    if (data.attendance) db.setAttendance(data.attendance);
+    // Convert all values to string and keys to lowercase to avoid comparison issues
+    const sanitize = (list: any[]) => {
+      if (!Array.isArray(list)) return [];
+      return list.map(item => {
+        const newItem: any = {};
+        Object.keys(item).forEach(key => {
+          newItem[key.toLowerCase().trim()] = String(item[key]);
+        });
+        return newItem;
+      });
+    };
+
+    if (data.users && data.users.length > 0) {
+      console.log('Pulled users:', data.users.length);
+      db.setUsers(sanitize(data.users));
+    }
+    if (data.peserta && data.peserta.length > 0) {
+      db.setPeserta(sanitize(data.peserta));
+    }
+    if (data.events && data.events.length > 0) {
+      db.setEvents(sanitize(data.events));
+    }
+    if (data.attendance && data.attendance.length > 0) {
+      db.setAttendance(sanitize(data.attendance));
+    }
     
     return data;
   } catch (error) {

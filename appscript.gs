@@ -108,7 +108,7 @@ function doPost(e) {
 function getSheetData(sheet) {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
-  const headers = data[0];
+  const headers = data[0].map(h => String(h).toLowerCase().trim());
   const rows = data.slice(1);
   return rows.map(row => {
     const obj = {};
