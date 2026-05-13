@@ -1,5 +1,5 @@
 {
-  "name": "EventQR Absensi",
+  "name": "E-CAI Pelaihari",
   "description": "Aplikasi absensi event menggunakan scan QR Code untuk panitia, peserta, dan admin.",
   "requestFramePermissions": [
     "camera"

@@ -16,11 +16,24 @@
  * 9. Copy URL Web App yang muncul untuk digunakan di aplikasi.
  */
 
-const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE'; // GANTI DENGAN ID SPREADSHEET ANDA
+const SPREADSHEET_ID = '1_IU2US_o8r7VRMU0efcm_cZoJrJA0t6CfKw9tHkomy8'; // GANTI DENGAN ID SPREADSHEET ANDA
+
+// Ambil ID dari URL jika pengguna memasukkan Full URL
+function getSS(idOrUrl) {
+  var id = idOrUrl.trim();
+  if (id.indexOf('http') !== -1) {
+    // Regex lebih kuat untuk mengambil ID unik spreadsheet
+    var match = id.match(/[-\w]{25,}/);
+    if (match) {
+      id = match[0];
+    }
+  }
+  return SpreadsheetApp.openById(id);
+}
 
 function doGet(e) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSS(SPREADSHEET_ID);
     const action = e.parameter.action;
     const table = e.parameter.table;
 
@@ -48,7 +61,7 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSS(SPREADSHEET_ID);
     const body = JSON.parse(e.postData.contents);
     const { action, table, data } = body;
 

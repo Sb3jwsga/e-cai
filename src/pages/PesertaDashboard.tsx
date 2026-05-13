@@ -44,10 +44,10 @@ export default function PesertaDashboard({ peserta, onLogout }: PesertaDashboard
     >
       {activeTab === 'STATUS' && (
          <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="bg-slate-900 text-white p-10 border-l-[12px] border-indigo-600 rounded-3xl shadow-sm relative overflow-hidden">
+            <div className="bg-slate-900 text-white p-10 border-l-[12px] border-emerald-600 rounded-3xl shadow-sm relative overflow-hidden">
                <QrCode className="absolute bottom-[-10%] right-[-5%] w-64 h-64 opacity-5 rotate-12" />
                <div className="relative z-10">
-                  <p className="text-xs font-bold uppercase text-indigo-400 mb-2 tracking-[0.2em]">Selamat Datang,</p>
+                  <p className="text-xs font-bold uppercase text-emerald-400 mb-2 tracking-[0.2em]">Selamat Datang,</p>
                   <h2 className="text-4xl font-bold tracking-tight mb-4">{peserta.nama_lengkap}</h2>
                   <div className="flex flex-wrap gap-4 mt-8">
                      <div className="flex items-center gap-2 px-4 py-1.5 bg-white/10 rounded-full text-[10px] font-bold uppercase border border-white/5 tracking-wider">
@@ -63,7 +63,7 @@ export default function PesertaDashboard({ peserta, onLogout }: PesertaDashboard
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                <div className="lg:col-span-7 space-y-6">
                   <h3 className="font-bold text-slate-800 tracking-tight flex items-center gap-2">
-                     <Clock className="w-5 h-5 text-indigo-600" /> Progress Presensi Sesi
+                     <Clock className="w-5 h-5 text-emerald-600" /> Progress Presensi Sesi
                   </h3>
                   <div className="space-y-4">
                   {events.map(ev => {
@@ -76,7 +76,7 @@ export default function PesertaDashboard({ peserta, onLogout }: PesertaDashboard
                               <div>
                                  <h4 className="font-bold text-slate-800 text-lg leading-tight uppercase tracking-tight">{ev.nama_event}</h4>
                                  <div className="flex items-center gap-2 mt-2">
-                                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg uppercase">{ev.tanggal_event}</span>
+                                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg uppercase">{ev.tanggal_event}</span>
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">&bull; {ev.jam_mulai_event} WIB</span>
                                  </div>
                               </div>
@@ -121,7 +121,7 @@ export default function PesertaDashboard({ peserta, onLogout }: PesertaDashboard
                {events.map((ev, idx) => (
                   <div key={ev.id} className="flex gap-8 group">
                      <div className="w-12 flex flex-col items-center">
-                        <div className="w-10 h-10 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-800 z-10 group-first:bg-indigo-600 group-first:text-white group-first:border-indigo-600 transition-all">
+                        <div className="w-10 h-10 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-800 z-10 group-first:bg-emerald-600 group-first:text-white group-first:border-emerald-600 transition-all">
                            {idx + 1}
                         </div>
                         <div className="flex-1 w-0.5 bg-slate-100 group-last:hidden"></div>
@@ -155,11 +155,11 @@ export default function PesertaDashboard({ peserta, onLogout }: PesertaDashboard
                </div>
             </div>
             
-            <div className="p-6 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-start gap-4">
-               <AlertCircle className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+            <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-4">
+               <AlertCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                <div className="space-y-1">
-                 <p className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">Verifikasi Data</p>
-                 <p className="text-sm text-indigo-600/80 font-medium leading-relaxed">
+                 <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Verifikasi Data</p>
+                 <p className="text-sm text-emerald-600/80 font-medium leading-relaxed">
                    Jika terdapat ketidaksesuaian pada data profil Anda, silakan hubungi tim administrasi di meja pendaftaran untuk pemutakhiran data.
                  </p>
                </div>

@@ -28,17 +28,16 @@ const saveToStorage = <T>(key: string, value: T): void => {
 
 // Sync Helper for Google Sheets
 export const syncToSpreadsheet = async (table: string, action: 'create' | 'update' | 'delete', data: any) => {
-  const url = import.meta.env.VITE_APPSCRIPT_URL;
-  if (!url) return { success: false, error: 'URL Apps Script belum diatur.' };
+  const url = '/api/spreadsheet';
 
   try {
-    await fetch(url, {
+    const response = await fetch(url, {
       method: 'POST',
-      mode: 'no-cors', 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, table, data })
     });
-    return { success: true };
+    const result = await response.json();
+    return { success: true, ...result };
   } catch (error) {
     console.error('Sync Error:', error);
     return { success: false, error: String(error) };
@@ -46,13 +45,9 @@ export const syncToSpreadsheet = async (table: string, action: 'create' | 'updat
 };
 
 export const pullFromSpreadsheet = async () => {
-  const url = import.meta.env.VITE_APPSCRIPT_URL;
-  if (!url) {
-    console.warn('VITE_APPSCRIPT_URL is missing. Please check your .env file.');
-    return null;
-  }
+  const url = '/api/spreadsheet';
 
-  console.log('Attempting to pull data from:', url);
+  console.log('Attempting to pull cloud data...');
 
   try {
     const response = await fetch(`${url}?action=readAll`, {
@@ -67,43 +62,108 @@ export const pullFromSpreadsheet = async () => {
     const data = await response.json();
     console.log('Cloud data raw result:', data);
     
+    if (data.error) {
+      console.error('Apps Script Error:', data.error);
+      return { error: data.error };
+    }
+    
     // Convert all values to string and keys to lowercase to avoid comparison issues
     const sanitize = (list: any[]) => {
       if (!list || !Array.isArray(list)) {
         console.warn('Expected array but got:', list);
         return [];
       }
-      return list.map(item => {
+      return list.map((item, index) => {
         const newItem: any = {};
         Object.keys(item).forEach(key => {
-          const cleanKey = key.toLowerCase().trim();
+          let cleanKey = key.toLowerCase().trim().replace(/\s+/g, '');
+          
+          // Alias mapping to match User type keys
+          if (['user', 'nama', 'name', 'username', 'uname'].includes(cleanKey)) {
+            cleanKey = 'username';
+          }
+          if (['sandi', 'pass', 'pw', 'password', 'key'].includes(cleanKey)) {
+            cleanKey = 'password';
+          }
+          if (['peran', 'role', 'level', 'status', 'akses'].includes(cleanKey)) {
+            cleanKey = 'level';
+          }
+          if (['id', 'no', 'uuid'].includes(cleanKey)) {
+            cleanKey = 'id';
+          }
+          
           const rawValue = item[key];
-          // Handle potential numeric values specifically
-          newItem[cleanKey] = (rawValue !== null && rawValue !== undefined) ? String(rawValue).trim() : '';
+          let value = (rawValue !== null && rawValue !== undefined) ? String(rawValue).trim() : '';
+          
+          if (cleanKey === 'level') {
+            value = value.toUpperCase();
+          }
+          
+          newItem[cleanKey] = value;
         });
+
+        // Ensure ID exists
+        if (!newItem.id) {
+          newItem.id = String(index + 1);
+        }
+        
         return newItem;
       });
     };
 
-    if (data.users && Array.isArray(data.users)) {
-      const sanitizedUsers = sanitize(data.users);
+    // Map to find keys case-insensitively
+    const dataKeys = Object.keys(data);
+    const getTableData = (tableName: string) => {
+      const target = tableName.toLowerCase().trim();
+      // Try exact plural first
+      let key = dataKeys.find(k => k.toLowerCase().trim() === target);
+      // Try singular
+      if (!key && target.endsWith('s')) {
+        const singular = target.slice(0, -1);
+        key = dataKeys.find(k => k.toLowerCase().trim() === singular);
+      }
+      // Try plural if target was singular
+      if (!key && !target.endsWith('s')) {
+        const plural = target + 's';
+        key = dataKeys.find(k => k.toLowerCase().trim() === plural);
+      }
+      return key ? data[key] : null;
+    };
+
+    const usersData = getTableData('users');
+    if (usersData && Array.isArray(usersData)) {
+      const sanitizedUsers = sanitize(usersData);
       console.log('Sanitized Users for DB:', sanitizedUsers);
-      db.setUsers(sanitizedUsers);
+      
+      // Merge with INITIAL_USERS to ensure admin/123 always works as fallback
+      const mergedUsers = [...INITIAL_USERS];
+      sanitizedUsers.forEach(u => {
+        if (!mergedUsers.find(mu => mu.username === u.username)) {
+          mergedUsers.push(u);
+        }
+      });
+      
+      db.setUsers(mergedUsers);
     }
-    if (data.peserta && Array.isArray(data.peserta)) {
-      db.setPeserta(sanitize(data.peserta));
-    }
-    if (data.events && Array.isArray(data.events)) {
-      db.setEvents(sanitize(data.events));
-    }
-    if (data.attendance && Array.isArray(data.attendance)) {
-      db.setAttendance(sanitize(data.attendance));
+    const pesertaData = getTableData('peserta');
+    if (pesertaData && Array.isArray(pesertaData)) {
+      db.setPeserta(sanitize(pesertaData));
     }
     
-    return data;
+    const eventsData = getTableData('events');
+    if (eventsData && Array.isArray(eventsData)) {
+      db.setEvents(sanitize(eventsData));
+    }
+    
+    const attendanceData = getTableData('attendance');
+    if (attendanceData && Array.isArray(attendanceData)) {
+      db.setAttendance(sanitize(attendanceData));
+    }
+    
+    return { success: true, data };
   } catch (error) {
     console.error('Pull Error Details:', error);
-    return null;
+    return { error: error instanceof Error ? error.message : String(error) };
   }
 };
 

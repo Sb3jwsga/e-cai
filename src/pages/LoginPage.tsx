@@ -23,19 +23,23 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [isIframe, setIsIframe] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'IDLE' | 'SYNCING' | 'SUCCESS' | 'ERROR'>('IDLE');
+  const [cloudError, setCloudError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsIframe(window.self !== window.top);
     const initialSync = async () => {
-      if (!import.meta.env.VITE_APPSCRIPT_URL) {
-        setSyncStatus('ERROR');
-        return;
-      }
       setSyncStatus('SYNCING');
       setIsSyncing(true);
       const res = await pullFromSpreadsheet();
       setIsSyncing(false);
-      setSyncStatus(res ? 'SUCCESS' : 'ERROR');
+      
+      if (res && (res as any).success) {
+        setSyncStatus('SUCCESS');
+        setCloudError(null);
+      } else {
+        setSyncStatus('ERROR');
+        setCloudError((res as any)?.error || 'Unknown sync error');
+      }
     };
     initialSync();
   }, []);
@@ -62,24 +66,40 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         level: found.level
       });
     } else {
-      setError(`Username atau password salah. Pastikan data di spreadsheet sudah benar. (Username input: "${username}")`);
+      setError(`Username atau password salah. Pastikan data sudah benar. (Username input: "${username}")`);
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-slate-50">
       <div className="w-full max-w-md p-8 bg-white border border-slate-200 rounded-3xl shadow-sm">
-        <div className="flex justify-center mb-8">
-          <div className="p-4 bg-indigo-600 rounded-2xl shadow-[0_0_20px_rgba(79,70,229,0.3)]">
-            <QrCode className="w-10 h-10 text-white" />
+        <div className="flex justify-center mb-6">
+          <div className="w-32 h-32 flex items-center justify-center overflow-hidden">
+            <img 
+              src="/logo.png" 
+              alt="Logo CAI" 
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                // Fallback to icon if image fails to load
+                e.currentTarget.style.display = 'none';
+                const parent = e.currentTarget.parentElement;
+                if (parent && !parent.querySelector('.fallback-icon')) {
+                  const div = document.createElement('div');
+                  div.className = "fallback-icon p-4 bg-emerald-600 rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.3)]";
+                  div.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-qrcode text-white"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>';
+                  parent.appendChild(div);
+                }
+              }}
+            />
           </div>
         </div>
 
-        <h1 className="mb-2 text-2xl font-bold text-center text-slate-800 tracking-tight">EventScan Pro</h1>
+        <h1 className="mb-2 text-2xl font-bold text-center text-slate-800 tracking-tight text-emerald-700">E-CAI Pelaihari</h1>
         <p className="mb-6 text-sm text-center text-slate-500">Sistem Presensi QR Code Terintegrasi</p>
 
         <div className={cn(
-          "flex items-center justify-center gap-2 mb-6 py-1.5 px-3 rounded-full border text-[10px] font-bold uppercase tracking-wider mx-auto w-fit transition-all",
+          "flex items-center justify-center gap-2 mb-2 py-1.5 px-3 rounded-full border text-[10px] font-bold uppercase tracking-wider mx-auto w-fit transition-all",
           syncStatus === 'SUCCESS' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
           syncStatus === 'ERROR' ? "bg-amber-50 text-amber-600 border-amber-100 cursor-pointer hover:bg-amber-100" :
           "bg-slate-50 text-slate-400 border-slate-100"
@@ -92,12 +112,19 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
            'Connecting to Cloud...'}
         </div>
 
+        {cloudError && (
+          <div className="mb-6 mx-auto w-fit max-w-[280px] text-[9px] text-center text-amber-600 bg-amber-50/50 p-2 rounded-lg border border-amber-100 break-all">
+            <span className="font-bold block mb-1">DATA ERROR:</span>
+            {cloudError}
+          </div>
+        )}
+
         <div className="flex mb-6 bg-slate-100 p-1 rounded-xl">
           <button
             onClick={() => { setMode('STAFF'); setScanning(false); setError(''); }}
             className={cn(
               "flex-1 py-2.5 flex items-center justify-center gap-2 rounded-lg transition-all font-semibold text-sm",
-              mode === 'STAFF' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              mode === 'STAFF' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
             )}
           >
             <ShieldCheck className="w-4 h-4" />
@@ -107,7 +134,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             onClick={() => { setMode('PESERTA'); setError(''); }}
             className={cn(
               "flex-1 py-2.5 flex items-center justify-center gap-2 rounded-lg transition-all font-semibold text-sm",
-              mode === 'PESERTA' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              mode === 'PESERTA' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
             )}
           >
             <Users className="w-4 h-4" />
@@ -124,7 +151,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             {error.toLowerCase().includes('kamera') && isIframe && (
               <button 
                 onClick={() => window.open(window.location.href, '_blank')}
-                className="text-indigo-600 hover:underline text-left mt-1 text-[10px]"
+                className="text-emerald-600 hover:underline text-left mt-1 text-[10px]"
               >
                 Klik di sini untuk buka di Tab Baru →
               </button>
@@ -140,8 +167,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
-                placeholder="Ex: admin_01"
+                className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
+                placeholder="Masukkan Username"
                 required
               />
             </div>
@@ -151,7 +178,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
                 placeholder="&bull;&bull;&bull;&bull;&bull;&bull;"
                 required
               />
@@ -163,7 +190,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 "w-full py-4 mt-6 font-bold text-white rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2",
                 isSyncing 
                   ? "bg-slate-400 cursor-not-allowed" 
-                  : "bg-indigo-600 hover:bg-indigo-700 shadow-[0_4px_15px_rgba(79,70,229,0.3)]"
+                  : "bg-emerald-600 hover:bg-emerald-700 shadow-[0_4px_15px_rgba(16,185,129,0.3)]"
               )}
             >
               {isSyncing && <RefreshCw className="w-4 h-4 animate-spin" />}
@@ -175,10 +202,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             {!scanning ? (
               <button
                 onClick={() => setScanning(true)}
-                className="w-full py-12 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl hover:border-indigo-400 hover:bg-indigo-50/30 transition-all group"
+                className="w-full py-12 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl hover:border-emerald-400 hover:bg-emerald-50/30 transition-all group"
               >
-                <div className="p-4 bg-slate-100 rounded-2xl mb-4 group-hover:bg-indigo-100 transition-colors">
-                  <QrCode className="w-8 h-8 text-slate-400 group-hover:text-indigo-600" />
+                <div className="p-4 bg-slate-100 rounded-2xl mb-4 group-hover:bg-emerald-100 transition-colors">
+                  <QrCode className="w-8 h-8 text-slate-400 group-hover:text-emerald-600" />
                 </div>
                 <span className="font-bold text-slate-800">Mulai Scan QR</span>
                 <span className="text-xs mt-1 text-slate-400 italic">Gunakan kamera untuk login</span>
@@ -214,8 +241,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       </div>
       
       <div className="mt-8 text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-loose">
-        Powered by Google AI Studio Technology<br/>
-        Secure Event Management System &copy; 2024
+        Powered by Ubaidillah Dev - PPG Pelaihari<br/>
+        Secure Event Management System &copy; 2026
       </div>
     </div>
   );
@@ -253,8 +280,8 @@ function ScannerWrapper({ onScanSuccess, onError }: { onScanSuccess: (data: stri
   return (
     <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-black aspect-square flex items-center justify-center">
       <div id="reader" className="w-full"></div>
-      <div className="absolute inset-0 border-4 border-indigo-500/30 pointer-events-none z-10"></div>
-      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.8)] animate-pulse z-10 p-0"></div>
+      <div className="absolute inset-0 border-4 border-emerald-500/30 pointer-events-none z-10"></div>
+      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] animate-pulse z-10 p-0"></div>
     </div>
   );
 }

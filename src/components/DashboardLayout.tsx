@@ -34,10 +34,15 @@ export default function DashboardLayout({
       <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col shrink-0">
         <div className="p-6 border-b border-slate-100 flex flex-col gap-1">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <QrCode className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
             </div>
-            <span className="font-bold text-xl tracking-tight text-slate-800 uppercase">EventQR</span>
+            <span className="font-bold text-xl tracking-tight text-slate-800 uppercase">E-CAI</span>
           </div>
           <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
             {role} PORTAL
@@ -52,11 +57,11 @@ export default function DashboardLayout({
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold transition-all rounded-xl",
                 activeTab === tab.id
-                  ? "bg-indigo-50 text-indigo-700 shadow-sm"
+                  ? "bg-emerald-50 text-emerald-700 shadow-sm"
                   : "text-slate-600 hover:bg-slate-50"
               )}
             >
-              <span className={cn("w-5 h-5 flex items-center justify-center", activeTab === tab.id ? "text-indigo-600" : "text-slate-400")}>
+              <span className={cn("w-5 h-5 flex items-center justify-center", activeTab === tab.id ? "text-emerald-600" : "text-slate-400")}>
                 {tab.icon}
               </span>
               {tab.label}
@@ -66,8 +71,8 @@ export default function DashboardLayout({
 
         <div className="p-4 border-t border-slate-100 bg-white">
           <div className="flex items-center gap-3 px-3 py-3 mb-4 rounded-xl border border-slate-50 bg-slate-50/50">
-            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center border border-indigo-200">
-              <UserIcon className="w-5 h-5 text-indigo-600" />
+            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center border border-emerald-200">
+              <UserIcon className="w-5 h-5 text-emerald-600" />
             </div>
             <div className="overflow-hidden">
               <p className="text-sm font-bold text-slate-800 truncate leading-tight">{userName}</p>
@@ -89,10 +94,15 @@ export default function DashboardLayout({
         {/* Mobile Header */}
         <header className="md:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-40 bg-white/80 backdrop-blur-md">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <QrCode className="w-4 h-4 text-white" />
+            <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
             </div>
-            <span className="font-bold text-lg tracking-tight text-slate-800">EventQR</span>
+            <span className="font-bold text-lg tracking-tight text-slate-800">E-CAI</span>
           </div>
           <button 
             onClick={onLogout}
@@ -131,18 +141,18 @@ export default function DashboardLayout({
               onClick={() => onTabChange?.(tab.id)}
               className={cn(
                 "flex flex-col items-center gap-1 min-w-[72px] transition-all relative py-1",
-                activeTab === tab.id ? "text-indigo-600" : "text-slate-400"
+                activeTab === tab.id ? "text-emerald-600" : "text-slate-400"
               )}
             >
               <div className={cn(
                 "p-2 rounded-xl transition-all",
-                activeTab === tab.id ? "bg-indigo-50 shadow-sm" : ""
+                activeTab === tab.id ? "bg-emerald-50 shadow-sm" : ""
               )}>
                 {React.cloneElement(tab.icon as React.ReactElement, { className: "w-5 h-5" })}
               </div>
               <span className="text-[10px] font-bold uppercase tracking-wider scale-90 origin-bottom">{tab.label}</span>
               {activeTab === tab.id && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-600 rounded-full"></div>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-600 rounded-full"></div>
               )}
             </button>
           ))}

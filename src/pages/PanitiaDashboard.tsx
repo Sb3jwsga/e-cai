@@ -132,7 +132,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
                  "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all border",
                  isSyncing 
                   ? "bg-slate-100 text-slate-400 border-slate-200" 
-                  : "bg-white text-indigo-600 border-indigo-100 hover:bg-indigo-50 hover:border-indigo-200 shadow-sm"
+                  : "bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 hover:border-emerald-200 shadow-sm"
                )}
              >
                <RefreshCw className={cn("w-3.5 h-3.5", isSyncing && "animate-spin")} />
@@ -144,7 +144,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
             <div className="lg:col-span-5 space-y-6">
                <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm text-slate-800">
                   <h3 className="font-bold text-sm mb-6 flex items-center gap-2">
-                     <AlertCircle className="w-4 h-4 text-indigo-600" /> KONFIGURASI SCAN
+                     <AlertCircle className="w-4 h-4 text-emerald-600" /> KONFIGURASI SCAN
                   </h3>
                   <div className="space-y-5">
                      <div className="space-y-1.5">
@@ -152,7 +152,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
                         <select 
                           value={selectedEventId}
                           onChange={(e) => setSelectedEventId(e.target.value)}
-                          className="w-full p-3.5 border border-slate-200 rounded-xl font-semibold outline-none bg-slate-50 focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                          className="w-full p-3.5 border border-slate-200 rounded-xl font-semibold outline-none bg-slate-50 focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
                         >
                           {events.map(ev => (
                             <option key={ev.id} value={ev.id}>
@@ -168,14 +168,14 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
                              onClick={() => setScanType('MATERI')}
                              className={cn(
                                "flex-1 py-2.5 rounded-lg font-bold text-xs transition-all",
-                               scanType === 'MATERI' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                               scanType === 'MATERI' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
                              )}
                            >Materi</button>
                            <button 
                              onClick={() => setScanType('MAKAN')}
                              className={cn(
                                "flex-1 py-2.5 rounded-lg font-bold text-xs transition-all",
-                               scanType === 'MAKAN' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                               scanType === 'MAKAN' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
                              )}
                            >Makan</button>
                         </div>
@@ -219,21 +219,21 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
 
             {/* Scanner Area */}
             <div className="lg:col-span-7 bg-white border border-slate-200 p-4 rounded-3xl shadow-sm flex flex-col items-center justify-center relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5 text-indigo-600">
+                <div className="absolute top-0 right-0 p-4 opacity-5 text-emerald-600">
                    <QrCode className="w-24 h-24" />
                 </div>
                 
                 <div className="w-full max-w-sm aspect-square border-4 border-dashed border-slate-100 rounded-3xl flex items-center justify-center relative p-2">
                    {/* Corners */}
-                   <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-indigo-600 rounded-tl-xl"></div>
-                   <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-indigo-600 rounded-tr-xl"></div>
-                   <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-indigo-600 rounded-bl-xl"></div>
-                   <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-indigo-600 rounded-br-xl"></div>
-
+                   <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-600 rounded-tl-xl"></div>
+                   <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-600 rounded-tr-xl"></div>
+                   <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-600 rounded-bl-xl"></div>
+                   <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-600 rounded-br-xl"></div>
+ 
                    <div className="w-full h-full bg-slate-50 rounded-2xl overflow-hidden relative border border-slate-100 shadow-inner">
                       <ScannerComponent onScan={handleScanSuccess} />
                       {/* Scanline */}
-                      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.8)] z-10 pointer-events-none animate-pulse"></div>
+                      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] z-10 pointer-events-none animate-pulse"></div>
                    </div>
                 </div>
 
@@ -252,7 +252,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                  <h3 className="font-bold flex items-center gap-3 text-slate-800">
-                    <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                    <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
                       <Users className="w-5 h-5" />
                     </div>
                     Monitoring Peserta
@@ -263,7 +263,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
                       placeholder="Cari Peserta / ID..." 
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-xs font-semibold w-full md:w-64 bg-slate-50 focus:bg-white"
+                      className="pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-xs font-semibold w-full md:w-64 bg-slate-50 focus:bg-white"
                     />
                     <Users className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
                  </div>
@@ -353,9 +353,9 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
 
                  return (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-2">
-                       <div className="bg-indigo-50/50 border border-indigo-100/50 p-4 rounded-2xl">
-                          <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Hadir (L)</p>
-                          <p className="text-xl font-bold text-indigo-700">{stats.hadirL} <span className="text-[10px] text-indigo-300 font-medium">Orang</span></p>
+                       <div className="bg-emerald-50/50 border border-emerald-100/50 p-4 rounded-2xl">
+                          <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Hadir (L)</p>
+                          <p className="text-xl font-bold text-emerald-700">{stats.hadirL} <span className="text-[10px] text-emerald-300 font-medium">Orang</span></p>
                        </div>
                        <div className="bg-pink-50/50 border border-pink-100/50 p-4 rounded-2xl">
                           <p className="text-[9px] font-bold text-pink-400 uppercase tracking-widest mb-1">Hadir (P)</p>
@@ -404,7 +404,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
                                   )}
                                </div>
                                <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl">
-                                  <div className="p-2 bg-white rounded-lg text-indigo-600 shadow-sm">
+                                  <div className="p-2 bg-white rounded-lg text-emerald-600 shadow-sm">
                                      <MapPin className="w-3.5 h-3.5" />
                                   </div>
                                   <div>
@@ -479,18 +479,18 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
               {events.map(ev => (
                 <div key={ev.id} className="bg-white border border-slate-200 p-8 rounded-[32px] shadow-sm hover:shadow-md transition-all group">
                   <div className="mb-4">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">{ev.tanggal_event}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">{ev.tanggal_event}</span>
                   </div>
                   <h4 className="font-bold text-lg text-slate-800 uppercase mb-3 tracking-tight leading-tight">{ev.nama_event}</h4>
                   <div className="flex items-center gap-2 text-xs text-slate-400 font-bold mb-6">
-                    <Clock className="w-4 h-4 text-indigo-400" />
+                    <Clock className="w-4 h-4 text-emerald-400" />
                     {ev.jam_mulai_event} - {ev.jam_selesai_event} WIB
                   </div>
                   <div className="pt-4 border-t border-slate-50 flex justify-between items-center">
                     <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest leading-none">Status: Publik</span>
                     <button 
                       onClick={() => setSelectedDetailEvent(ev)}
-                      className="text-indigo-600 font-bold text-[10px] uppercase tracking-widest hover:underline px-2 py-1"
+                      className="text-emerald-600 font-bold text-[10px] uppercase tracking-widest hover:underline px-2 py-1"
                     >
                       Detail
                     </button>
@@ -504,7 +504,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
            <div className="bg-white rounded-3xl sm:rounded-[40px] p-6 sm:p-10 shadow-2xl max-w-lg w-full border border-white/20 animate-in slide-in-from-bottom-8 duration-300 max-h-[95vh] overflow-y-auto">
               <div className="flex justify-between items-start mb-8">
-                 <div className="p-3 bg-indigo-100 rounded-2xl text-indigo-600">
+                 <div className="p-3 bg-emerald-100 rounded-2xl text-emerald-600">
                    <Calendar className="w-6 h-6" />
                  </div>
                  <button onClick={() => setSelectedDetailEvent(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
@@ -514,7 +514,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
               
               <div className="space-y-6">
                  <div>
-                   <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-600 mb-2 block">{selectedDetailEvent.tanggal_event}</span>
+                   <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600 mb-2 block">{selectedDetailEvent.tanggal_event}</span>
                    <h3 className="text-2xl font-bold text-slate-800 tracking-tight uppercase">{selectedDetailEvent.nama_event}</h3>
                  </div>
 
