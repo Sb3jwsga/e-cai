@@ -146,7 +146,7 @@ export const pullFromSpreadsheet = async () => {
       return key ? data[key] : null;
     };
 
-    const usersData = getTableData('users');
+    const usersData = getTableData('user');
     if (usersData && Array.isArray(usersData)) {
       const sanitizedUsers = sanitize(usersData);
       console.log('Sanitized Users for DB:', sanitizedUsers);
@@ -161,17 +161,17 @@ export const pullFromSpreadsheet = async () => {
       
       db.setUsers(mergedUsers);
     }
-    const pesertaData = getTableData('peserta');
+    const pesertaData = getTableData('Peserta');
     if (pesertaData && Array.isArray(pesertaData)) {
       db.setPeserta(sanitize(pesertaData));
     }
     
-    const eventsData = getTableData('events');
+    const eventsData = getTableData('Event');
     if (eventsData && Array.isArray(eventsData)) {
       db.setEvents(sanitize(eventsData));
     }
     
-    const attendanceData = getTableData('attendance');
+    const attendanceData = getTableData('Attendance');
     if (attendanceData && Array.isArray(attendanceData)) {
       db.setAttendance(sanitize(attendanceData));
     }
@@ -195,8 +195,8 @@ const INITIAL_EVENTS: Event[] = [
     nama_event: 'Sesi Pembukaan',
     tanggal_event: '2024-06-01',
     jam_mulai_event: '08:00',
-    jam_selesai_event: '10:00',
-    deskripsi_event: 'Pembukaan acara dan pengenalan panitia.',
+    jam_selesai: '10:00',
+    deskripsi: 'Pembukaan acara dan pengenalan panitia.',
     type: 'MATERI'
   }
 ];
@@ -216,29 +216,33 @@ export const db = {
   getUsers: () => getFromStorage<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS),
   setUsers: (users: User[], action?: 'create' | 'update' | 'delete', data?: any) => {
     saveToStorage(STORAGE_KEYS.USERS, users);
-    if (action && data) syncToSpreadsheet('users', action, data);
+    if (action && data) return syncToSpreadsheet('user', action, data);
+    return Promise.resolve({ success: true });
   },
   
   getPeserta: () => getFromStorage<Peserta[]>(STORAGE_KEYS.PESERTA, INITIAL_PESERTA),
   setPeserta: (peserta: Peserta[], action?: 'create' | 'update' | 'delete', data?: any) => {
     saveToStorage(STORAGE_KEYS.PESERTA, peserta);
-    if (action && data) syncToSpreadsheet('peserta', action, data);
+    if (action && data) return syncToSpreadsheet('Peserta', action, data);
+    return Promise.resolve({ success: true });
   },
   
   getEvents: () => getFromStorage<Event[]>(STORAGE_KEYS.EVENTS, INITIAL_EVENTS),
   setEvents: (events: Event[], action?: 'create' | 'update' | 'delete', data?: any) => {
     saveToStorage(STORAGE_KEYS.EVENTS, events);
-    if (action && data) syncToSpreadsheet('events', action, data);
+    if (action && data) return syncToSpreadsheet('Event', action, data);
+    return Promise.resolve({ success: true });
   },
   
   getAttendance: () => getFromStorage<Attendance[]>(STORAGE_KEYS.ATTENDANCE, []),
   setAttendance: (attendance: Attendance[], action?: 'create' | 'update' | 'delete', data?: any) => {
     saveToStorage(STORAGE_KEYS.ATTENDANCE, attendance);
-    if (action && data) syncToSpreadsheet('attendance', action, data);
+    if (action && data) return syncToSpreadsheet('Attendance', action, data);
+    return Promise.resolve({ success: true });
   },
 
   // Helpers
-  addAttendance: (record: Omit<Attendance, 'id' | 'timestamp'>) => {
+  addAttendance: async (record: Omit<Attendance, 'id' | 'timestamp'>) => {
     const records = db.getAttendance();
     
     // Strict enforcement: one attendance per event per participant per type
@@ -248,14 +252,14 @@ export const db = {
       a.type === record.type
     );
     
-    if (exists) return exists;
+    if (exists) return { success: true, data: exists, already: true };
 
     const newRecord: Attendance = {
       ...record,
       id: Math.random().toString(36).substring(2, 11),
       timestamp: new Date().toISOString()
     };
-    db.setAttendance([...records, newRecord], 'create', newRecord);
-    return newRecord;
+    const syncResult = await db.setAttendance([...records, newRecord], 'create', newRecord);
+    return { ...syncResult, data: newRecord };
   }
 };

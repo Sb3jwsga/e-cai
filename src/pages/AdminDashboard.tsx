@@ -200,24 +200,37 @@ function ManagePeserta() {
 
   const attendanceRecords = attendance.filter(a => a.eventId === selectedEventId && a.type === scanType);
 
-  const handleSave = () => {
-    let newList;
-    if (editingId) {
-      const updatedP = { ...peserta.find(p => p.id === editingId), ...formData } as Peserta;
-      newList = peserta.map(p => p.id === editingId ? updatedP : p);
-      db.setPeserta(newList, 'update', updatedP);
-    } else {
-      const newP = { 
-        ...formData, 
-        id: formData.id || `P${Math.floor(1000 + Math.random() * 9000)}` 
-      } as Peserta;
-      newList = [...peserta, newP];
-      db.setPeserta(newList, 'create', newP);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      let newList;
+      let syncResult;
+      if (editingId) {
+        const updatedP = { ...peserta.find(p => p.id === editingId), ...formData } as Peserta;
+        newList = peserta.map(p => p.id === editingId ? updatedP : p);
+        syncResult = await db.setPeserta(newList, 'update', updatedP);
+      } else {
+        const newP = { 
+          ...formData, 
+          id: formData.id || `P${Math.floor(1000 + Math.random() * 9000)}` 
+        } as Peserta;
+        newList = [...peserta, newP];
+        syncResult = await db.setPeserta(newList, 'create', newP);
+      }
+
+      if (syncResult && !syncResult.success) {
+        alert("Data saved locally, but failed to sync to Spreadsheet: " + syncResult.error);
+      }
+
+      setPeserta(newList);
+      setEditingId(null);
+      setIsAdding(false);
+      setFormData({});
+    } finally {
+      setIsSaving(false);
     }
-    setPeserta(newList);
-    setEditingId(null);
-    setIsAdding(false);
-    setFormData({});
   };
 
   const handleDelete = (id: string) => {
@@ -458,8 +471,15 @@ function ManagePeserta() {
                   </div>
                </div>
                <div className="mt-8 flex gap-3">
-                  <button onClick={handleSave} className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-emerald-500/25 hover:bg-emerald-700 active:scale-[0.98] transition-all">Simpan</button>
-                  <button onClick={() => { setIsAdding(false); setEditingId(null); setFormData({}); }} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-slate-200 active:scale-[0.98] transition-all">Batal</button>
+                  <button 
+                    disabled={isSaving}
+                    onClick={handleSave} 
+                    className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-emerald-500/25 hover:bg-emerald-700 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSaving && <RefreshCw className="w-3 h-3 animate-spin" />}
+                    {isSaving ? 'Menyimpan...' : 'Simpan'}
+                  </button>
+                  <button disabled={isSaving} onClick={() => { setIsAdding(false); setEditingId(null); setFormData({}); }} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-slate-200 active:scale-[0.98] transition-all">Batal</button>
                </div>
             </div>
          </div>
@@ -502,16 +522,28 @@ function ManageEvents() {
     setEvents(db.getEvents());
   }, []);
 
-  const handleSave = () => {
-    const newEvent = { 
-      ...formData, 
-      id: formData.id || `E${Date.now()}` 
-    } as Event;
-    const newList = [...events, newEvent];
-    db.setEvents(newList, 'create', newEvent);
-    setEvents(newList);
-    setIsAdding(false);
-    setFormData({ type: 'MATERI' });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const newEvent = { 
+        ...formData, 
+        id: formData.id || `E${Date.now()}` 
+      } as Event;
+      const newList = [...events, newEvent];
+      const result = await db.setEvents(newList, 'create', newEvent);
+      
+      if (!result.success) {
+        alert("Event saved locally, but failed to sync to Spreadsheet: " + result.error);
+      }
+      
+      setEvents(newList);
+      setIsAdding(false);
+      setFormData({ type: 'MATERI' });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const deleteEvent = (id: string) => {
@@ -558,11 +590,11 @@ function ManageEvents() {
                     </span>
                  </div>
                  <h4 className="font-bold text-slate-800 text-lg sm:text-xl mb-3 tracking-tight leading-tight uppercase">{ev.nama_event}</h4>
-                 <p className="text-sm text-slate-400 mb-8 font-medium line-clamp-2 leading-relaxed italic">{ev.deskripsi_event}</p>
+                 <p className="text-sm text-slate-400 mb-8 font-medium line-clamp-2 leading-relaxed italic">{ev.deskripsi}</p>
                  <div className="flex items-center gap-4 border-t border-slate-50 pt-6 mt-auto">
                     <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                        <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                       {ev.jam_mulai_event} - {ev.jam_selesai_event}
+                       {ev.jam_mulai_event} - {ev.jam_selesai}
                     </div>
                  </div>
               </div>
@@ -607,17 +639,24 @@ function ManageEvents() {
                       </div>
                       <div className="space-y-1.5">
                          <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-1">Selesai</label>
-                         <input type="time" className="w-full p-3.5 border border-slate-100 rounded-2xl outline-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all font-semibold" onChange={e => setFormData({...formData, jam_selesai_event: e.target.value})} />
+                         <input type="time" className="w-full p-3.5 border border-slate-100 rounded-2xl outline-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all font-semibold" onChange={e => setFormData({...formData, jam_selesai: e.target.value})} />
                       </div>
                    </div>
                    <div className="space-y-1.5">
                       <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-1">Ringkasan Deskripsi</label>
-                      <textarea rows={3} className="w-full p-3.5 border border-slate-100 rounded-2xl outline-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all font-semibold resize-none text-sm" onChange={e => setFormData({...formData, deskripsi_event: e.target.value})} placeholder="Berikan detail singkat acara..." />
+                      <textarea rows={3} className="w-full p-3.5 border border-slate-100 rounded-2xl outline-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all font-semibold resize-none text-sm" onChange={e => setFormData({...formData, deskripsi: e.target.value})} placeholder="Berikan detail singkat acara..." />
                    </div>
                 </div>
                 <div className="mt-8 flex gap-3 text-center">
-                   <button onClick={handleSave} className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-emerald-500/25 hover:bg-emerald-700 transition-all active:scale-[0.98]">Simpan</button>
-                   <button onClick={() => setIsAdding(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-slate-200 transition-all active:scale-[0.98]">Batal</button>
+                   <button 
+                     disabled={isSaving}
+                     onClick={handleSave} 
+                     className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-emerald-500/25 hover:bg-emerald-700 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                   >
+                     {isSaving && <RefreshCw className="w-3 h-3 animate-spin" />}
+                     {isSaving ? 'Menyimpan...' : 'Simpan'}
+                   </button>
+                   <button disabled={isSaving} onClick={() => setIsAdding(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-slate-200 transition-all active:scale-[0.98]">Batal</button>
                 </div>
              </div>
           </div>
@@ -929,12 +968,25 @@ function ManageStaff() {
       setUsers(db.getUsers());
    }, []);
 
-   const handleSave = () => {
-      const newUser = { ...formData, id: `U${Date.now()}` } as User;
-      const newList = [...users, newUser];
-      db.setUsers(newList, 'create', newUser);
-      setUsers(newList);
-      setIsAdding(false);
+   const [isSaving, setIsSaving] = useState(false);
+
+   const handleSave = async () => {
+      setIsSaving(true);
+      try {
+         const newUser = { ...formData, id: `U${Date.now()}` } as User;
+         const newList = [...users, newUser];
+         const result = await db.setUsers(newList, 'create', newUser);
+         
+         if (!result.success) {
+            alert("Staff saved locally, but failed to sync to Spreadsheet: " + result.error);
+         }
+         
+         setUsers(newList);
+         setIsAdding(false);
+         setFormData({ level: 'PANITIA' });
+      } finally {
+         setIsSaving(false);
+      }
    };
 
    const deleteUser = (id: string) => {
@@ -1044,8 +1096,15 @@ function ManageStaff() {
                      </div>
                   </div>
                   <div className="mt-8 flex gap-3 text-center">
-                     <button onClick={handleSave} className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-emerald-500/25 hover:bg-emerald-700 active:scale-[0.98] transition-all">Daftarkan</button>
-                     <button onClick={() => setIsAdding(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-slate-200 active:scale-[0.98] transition-all">Batal</button>
+                     <button 
+                        disabled={isSaving}
+                        onClick={handleSave} 
+                        className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-emerald-500/25 hover:bg-emerald-700 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                     >
+                        {isSaving && <RefreshCw className="w-3 h-3 animate-spin" />}
+                        {isSaving ? 'Mendaftarkan...' : 'Daftarkan'}
+                     </button>
+                     <button disabled={isSaving} onClick={() => setIsAdding(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-slate-200 active:scale-[0.98] transition-all">Batal</button>
                   </div>
                </div>
             </div>

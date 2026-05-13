@@ -27,8 +27,8 @@ export interface Event {
   nama_event: string;
   tanggal_event: string;
   jam_mulai_event: string;
-  jam_selesai_event: string;
-  deskripsi_event: string;
+  jam_selesai: string;
+  deskripsi: string;
   type: AttendanceType;
 }
 

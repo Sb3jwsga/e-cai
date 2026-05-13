@@ -15,8 +15,10 @@ async function startServer() {
 
   // Proxy API for Spreadsheet
   app.all("/api/spreadsheet", async (req, res) => {
+    console.log(`[API] Spreadsheet Request: ${req.method} action=${req.query.action || req.body?.action} table=${req.query.table || req.body?.table}`);
+    
     // URL hardcoded as requested
-    const appscriptUrl = "https://script.google.com/macros/s/AKfycbxV0pXMVsBvbYiDZKjkJP4JtJULBiKiAEoJhn90WGCwdoVe2WJ64dxzlyVxm_oIxT0W/exec";
+    const appscriptUrl = "https://script.google.com/macros/s/AKfycbycU6uSBCFJX9w4CchJXBBU75ID1vS989fTg4ASgw_B6GHhe8P2eWAM2XWiyDvfb09e/exec";
     
     try {
       const url = new URL(appscriptUrl);

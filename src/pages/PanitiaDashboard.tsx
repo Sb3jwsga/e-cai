@@ -70,7 +70,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
     { id: 'JADWAL', label: 'Jadwal Event', icon: <Calendar className="w-4 h-4" /> },
   ];
 
-  const handleScanSuccess = (decodedText: string) => {
+  const handleScanSuccess = async (decodedText: string) => {
     setScannerError(null); 
     // Check if participant exists
     const p = peserta.find(pes => pes.id === decodedText);
@@ -96,22 +96,33 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
       return;
     }
 
+    // Show wait state
+    setScanResult({ success: true, message: 'Menyinkronkan ke Cloud...', data: p });
+
     // Add attendance
-    db.addAttendance({
+    const result = await db.addAttendance({
       eventId: selectedEventId,
       pesertaId: decodedText,
       type: scanType,
       panitiaId: user.id
     });
 
-    setScanResult({ 
-      success: true, 
-      message: `Berhasil Absen: ${scanType === 'MATERI' ? 'Sesi Materi' : 'Pengambilan Makan'}`, 
-      data: p 
-    });
+    if (!result.success) {
+       setScanResult({ 
+         success: false, 
+         message: `Berhasil Absen Lokal, tapi Gagal Sync Cloud: ${result.error}`, 
+         data: p 
+       });
+    } else {
+       setScanResult({ 
+         success: true, 
+         message: `Berhasil Absen: ${scanType === 'MATERI' ? 'Sesi Materi' : 'Pengambilan Makan'} ${result.already ? '(Sudah Ada)' : '(Cloud Synced)'}`, 
+         data: p 
+       });
+    }
 
     // Reset result after 3 seconds
-    setTimeout(() => setScanResult(null), 3000);
+    setTimeout(() => setScanResult(null), 5000);
   };
 
   const handleScanError = (err: string) => {
@@ -508,7 +519,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
                   <h4 className="font-bold text-lg text-slate-800 uppercase mb-3 tracking-tight leading-tight">{ev.nama_event}</h4>
                   <div className="flex items-center gap-2 text-xs text-slate-400 font-bold mb-6">
                     <Clock className="w-4 h-4 text-emerald-400" />
-                    {ev.jam_mulai_event} - {ev.jam_selesai_event} WIB
+                    {ev.jam_mulai_event} - {ev.jam_selesai} WIB
                   </div>
                   <div className="pt-4 border-t border-slate-50 flex justify-between items-center">
                     <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest leading-none">Status: Publik</span>
@@ -545,14 +556,14 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
                  <div className="flex items-center gap-6 py-4 border-y border-slate-50">
                    <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-slate-400" />
-                      <span className="text-sm font-bold text-slate-600">{selectedDetailEvent.jam_mulai_event} - {selectedDetailEvent.jam_selesai_event} WIB</span>
+                      <span className="text-sm font-bold text-slate-600">{selectedDetailEvent.jam_mulai_event} - {selectedDetailEvent.jam_selesai} WIB</span>
                    </div>
                   </div>
 
                   <div className="space-y-2">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Deskripsi Kegiatan</p>
                     <p className="text-slate-600 leading-relaxed font-medium italic">
-                      {selectedDetailEvent.deskripsi_event || 'Tidak ada deskripsi tambahan untuk kegiatan ini.'}
+                      {selectedDetailEvent.deskripsi || 'Tidak ada deskripsi tambahan untuk kegiatan ini.'}
                     </p>
                   </div>
 

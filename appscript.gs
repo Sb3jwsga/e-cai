@@ -68,32 +68,44 @@ function doPost(e) {
     const sheet = ss.getSheetByName(table);
     if (!sheet) throw new Error('Table not found: ' + table);
 
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const headerRange = sheet.getRange(1, 1, 1, sheet.getLastColumn());
+    const headers = headerRange.getValues()[0].map(h => String(h).trim()); // Original case headers for writing
+    const cleanHeaders = headers.map(h => h.toLowerCase().replace(/\s+/g, '')); // Normalized headers for matching
 
     if (action === 'create') {
-      const newRow = headers.map(header => data[header] !== undefined ? data[header] : '');
+      const newRow = headers.map((header, i) => {
+        const cleanHeader = cleanHeaders[i];
+        // Try exact match, then normalized match
+        if (data[header] !== undefined) return data[header];
+        
+        // Find by normalized key in data
+        const dataKey = Object.keys(data).find(k => k.toLowerCase().replace(/\s+/g, '') === cleanHeader);
+        return dataKey ? data[dataKey] : '';
+      });
       sheet.appendRow(newRow);
-      return createJsonResponse({ success: true, message: 'Data created' });
+      return createJsonResponse({ success: true, message: 'Data created successfully' });
     }
 
     if (action === 'update') {
       const values = sheet.getDataRange().getValues();
-      const idIndex = headers.indexOf('id');
-      if (idIndex === -1) throw new Error('Table missing "id" column');
+      const idIndex = cleanHeaders.indexOf('id');
+      if (idIndex === -1) throw new Error('Table missing "id" column header');
 
       let found = false;
       for (let i = 1; i < values.length; i++) {
-        if (values[i][idIndex] == data.id) {
-          const updatedRow = headers.map((header, idx) => 
-            data[header] !== undefined ? data[header] : values[i][idx]
-          );
+        if (String(values[i][idIndex]).trim() === String(data.id).trim()) {
+          const updatedRow = headers.map((header, idx) => {
+            const cleanHeader = cleanHeaders[idx];
+            const dataKey = Object.keys(data).find(k => k.toLowerCase().replace(/\s+/g, '') === cleanHeader);
+            return dataKey ? data[dataKey] : values[i][idx];
+          });
           sheet.getRange(i + 1, 1, 1, headers.length).setValues([updatedRow]);
           found = true;
           break;
         }
       }
-      if (!found) throw new Error('Data with ID ' + data.id + ' not found');
-      return createJsonResponse({ success: true, message: 'Data updated' });
+      if (!found) throw new Error('Record with ID ' + data.id + ' not found');
+      return createJsonResponse({ success: true, message: 'Data updated successfully' });
     }
 
     if (action === 'delete') {
