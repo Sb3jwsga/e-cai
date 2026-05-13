@@ -2,12 +2,13 @@
  * Google Apps Script untuk menghubungkan Website Absensi (AI Studio) ke Google Sheets.
  * Petunjuk Penggunaan:
  * 1. Buat Spreadsheet baru di Google Sheets.
- * 2. Tambahkan 4 Sheet (Tab) dengan nama: "users", "peserta", "events", "attendance".
+ * 2. Tambahkan 5 Sheet (Tab) dengan nama: "users", "peserta", "events", "attendance", "dokumentasi".
  * 3. Isi baris pertama (Header) masing-masing sheet sebagai berikut:
  *    - users: id, username, password, level, profileId
  *    - peserta: id, nama_lengkap, jenis_kelamin, nomer_whatsapp, kelompok, desa
  *    - events: id, nama_event, tanggal_event, jam_mulai_event, jam_selesai_event, deskripsi_event, type
  *    - attendance: id, eventId, pesertaId, type, timestamp, panitiaId
+ *    - dokumentasi: id, tanggal, nama_event, link
  * 4. Buka menu Extensions > Apps Script.
  * 5. Hapus kode yang ada dan tempel kode di bawah ini.
  * 6. Ubah 'YOUR_SPREADSHEET_ID' dengan ID Spreadsheet Anda (ada di URL Spreadsheet).

@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { User, Peserta, Event, Attendance, AttendanceType } from '../types';
+import { User, Peserta, Event, Attendance, AttendanceType, Dokumentasi } from '../types';
 import { db, pullFromSpreadsheet } from '../lib/db';
 import DashboardLayout from '../components/DashboardLayout';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Users, Calendar, BarChart3, Plus, Trash2, Edit, Save, X, Phone, MapPin, Hash, QrCode, ShieldCheck, Clock, Download, RefreshCw } from 'lucide-react';
+import { Users, Calendar, BarChart3, Plus, Trash2, Edit, Save, X, Phone, MapPin, Hash, QrCode, ShieldCheck, Clock, Download, RefreshCw, Image, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { cn } from '../lib/utils';
 
@@ -113,6 +113,7 @@ export default function AdminDashboard({ user, onLogout }: AdminDashboardProps) 
   const [peserta, setPeserta] = useState<Peserta[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [dokumentasi, setDokumentasi] = useState<Dokumentasi[]>([]);
 
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -121,6 +122,7 @@ export default function AdminDashboard({ user, onLogout }: AdminDashboardProps) 
     setPeserta(db.getPeserta());
     setEvents(db.getEvents());
     setAttendance(db.getAttendance());
+    setDokumentasi(db.getDokumentasi());
   };
 
   const syncData = async () => {
@@ -152,6 +154,7 @@ export default function AdminDashboard({ user, onLogout }: AdminDashboardProps) 
     { id: 'DASHBOARD', label: 'Dashboard', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'PESERTA', label: 'Peserta', icon: <Users className="w-4 h-4" /> },
     { id: 'EVENT', label: 'Event', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'DOKUMENTASI', label: 'Dokumentasi', icon: <Image className="w-4 h-4" /> },
     { id: 'ANALISA', label: 'Analisa Kehadiran', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'STAFF', label: 'Manage Staff', icon: <Users className="w-4 h-4" /> },
   ];
@@ -246,6 +249,14 @@ export default function AdminDashboard({ user, onLogout }: AdminDashboardProps) 
         />
       )}
 
+      {activeTab === 'DOKUMENTASI' && (
+        <ManageDokumentasi 
+          dokumentasi={dokumentasi}
+          setDokumentasi={setDokumentasi}
+          events={events}
+        />
+      )}
+
       {activeTab === 'ANALISA' && (
         <AttendanceAnalysis 
           peserta={peserta} 
@@ -263,6 +274,188 @@ export default function AdminDashboard({ user, onLogout }: AdminDashboardProps) 
         />
       )}
     </DashboardLayout>
+  );
+}
+
+function ManageDokumentasi({ 
+  dokumentasi, 
+  setDokumentasi,
+  events
+}: { 
+  dokumentasi: Dokumentasi[]; 
+  setDokumentasi: React.Dispatch<React.SetStateAction<Dokumentasi[]>>;
+  events: Event[];
+}) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [formData, setFormData] = useState<Partial<Dokumentasi>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!formData.tanggal || !formData.nama_event || !formData.link) {
+      alert("Semua data harus diisi");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const newDoc = { 
+        ...formData, 
+        id: `D${Date.now()}` 
+      } as Dokumentasi;
+      const newList = [...dokumentasi, newDoc];
+      const result = await db.setDokumentasi(newList, 'create', newDoc);
+      
+      if (!result.success) {
+        alert("Dokumentasi tersimpan lokal, tapi gagal sinkron ke Spreadsheet: " + result.error);
+      }
+      
+      setDokumentasi(newList);
+      setIsAdding(false);
+      setFormData({});
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const deleteDoc = (id: string) => {
+    if (confirm('Hapus dokumentasi ini?')) {
+      const newList = dokumentasi.filter(d => d.id !== id);
+      db.setDokumentasi(newList, 'delete', { id });
+      setDokumentasi(newList);
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <h3 className="font-bold flex items-center gap-3 text-slate-800">
+          <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
+            <Image className="w-5 h-5" />
+          </div>
+          Dokumentasi Event
+        </h3>
+        <button
+          onClick={() => setIsAdding(true)}
+          className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 text-white font-bold text-xs uppercase rounded-xl hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/10"
+        >
+          <Plus className="w-4 h-4" /> Tambah Dokumentasi
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {dokumentasi.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-slate-400 font-medium italic">Belum ada dokumentasi</div>
+        ) : (
+          dokumentasi.map(doc => (
+            <div key={doc.id} className="bg-white border border-slate-200 p-6 rounded-[32px] relative group transition-all hover:shadow-lg hover:border-emerald-100 flex flex-col">
+              <button 
+                onClick={() => deleteDoc(doc.id)} 
+                className="absolute top-4 right-4 md:opacity-0 group-hover:opacity-100 p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <div className="mb-4">
+                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full uppercase tracking-wider">
+                  {formatDate(doc.tanggal)}
+                </span>
+              </div>
+              <h4 className="font-bold text-slate-800 text-lg mb-3 tracking-tight uppercase line-clamp-2">{doc.nama_event}</h4>
+              
+              <div className="mt-auto pt-6 border-t border-slate-50 flex justify-between items-center">
+                 <a 
+                   href={doc.link} 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors"
+                 >
+                   <ExternalLink className="w-3.5 h-3.5" />
+                   Buka Drive
+                 </a>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {isAdding && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl sm:rounded-[40px] p-6 sm:p-10 shadow-2xl max-w-md w-full border border-white/20 animate-in slide-in-from-bottom-8 duration-300 max-h-[95vh] overflow-y-auto">
+            <div className="w-16 h-1.5 bg-slate-100 rounded-full mb-8 mx-auto"></div>
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight mb-8 text-center flex items-center justify-center gap-3 uppercase tracking-tighter">
+              <div className="p-2 bg-emerald-600 rounded-xl text-white">
+                <Image className="w-5 h-5" />
+              </div>
+              TAMBAH DOKUMENTASI
+            </h3>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-1">Pilih Event (Opsional)</label>
+                <select 
+                  className="w-full p-3.5 border border-slate-100 rounded-2xl outline-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all font-bold text-sm appearance-none"
+                  onChange={e => {
+                    const ev = events.find(event => event.id === e.target.value);
+                    if (ev) {
+                      setFormData({
+                        ...formData,
+                        nama_event: ev.nama_event,
+                        tanggal: ev.tanggal_event
+                      });
+                    }
+                  }}
+                  defaultValue=""
+                >
+                  <option value="">-- Pilih dari Event yang Ada --</option>
+                  {events.map(ev => (
+                    <option key={ev.id} value={ev.id}>{ev.nama_event} ({formatDate(ev.tanggal_event)})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-1">Nama Event</label>
+                <input 
+                  className="w-full p-3.5 border border-slate-100 rounded-2xl outline-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all font-semibold" 
+                  value={formData.nama_event || ''}
+                  onChange={e => setFormData({...formData, nama_event: e.target.value})} 
+                  placeholder="Masukkan nama event..." 
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-1">Tanggal Event</label>
+                <input 
+                  type="date" 
+                  className="w-full p-3.5 border border-slate-100 rounded-2xl outline-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all font-semibold" 
+                  value={formData.tanggal || ''}
+                  onChange={e => setFormData({...formData, tanggal: e.target.value})} 
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-1">Link Google Drive</label>
+                <input 
+                  className="w-full p-3.5 border border-slate-100 rounded-2xl outline-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all font-semibold" 
+                  value={formData.link || ''}
+                  onChange={e => setFormData({...formData, link: e.target.value})} 
+                  placeholder="https://drive.google.com/..." 
+                />
+              </div>
+            </div>
+            <div className="mt-8 flex gap-3 text-center">
+              <button 
+                disabled={isSaving}
+                onClick={handleSave} 
+                className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-emerald-500/25 hover:bg-emerald-700 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isSaving && <RefreshCw className="w-3 h-3 animate-spin" />}
+                {isSaving ? 'Menyimpan...' : 'Simpan'}
+              </button>
+              <button disabled={isSaving} onClick={() => setIsAdding(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-slate-200 transition-all active:scale-[0.98]">Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1097,6 +1290,7 @@ function ManageStaff({
 }) {
    const [formData, setFormData] = useState<Partial<User>>({ level: 'PANITIA' });
    const [isAdding, setIsAdding] = useState(false);
+   const [showPassword, setShowPassword] = useState(false);
 
    const [isSaving, setIsSaving] = useState(false);
 
@@ -1215,7 +1409,21 @@ function ManageStaff({
                      </div>
                      <div className="space-y-1.5">
                         <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-1">Password</label>
-                        <input className="w-full p-3.5 border border-slate-100 rounded-2xl outline-none bg-slate-50 font-semibold focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all focus:bg-white" onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Buat password..." type="password" />
+                        <div className="relative">
+                           <input 
+                              className="w-full p-3.5 border border-slate-100 rounded-2xl outline-none bg-slate-50 font-semibold focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all focus:bg-white pr-12" 
+                              onChange={e => setFormData({...formData, password: e.target.value})} 
+                              placeholder="Buat password..." 
+                              type={showPassword ? "text" : "password"} 
+                           />
+                           <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-emerald-600 transition-colors"
+                           >
+                              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                           </button>
+                        </div>
                      </div>
                      <div className="space-y-1.5">
                         <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-1">Level Akses</label>

@@ -3,13 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { User, Peserta, Event, Attendance } from '../types';
+import { User, Peserta, Event, Attendance, Dokumentasi } from '../types';
 
 const STORAGE_KEYS = {
   USERS: 'event_qr_users',
   PESERTA: 'event_qr_peserta',
   EVENTS: 'event_qr_events',
-  ATTENDANCE: 'event_qr_attendance'
+  ATTENDANCE: 'event_qr_attendance',
+  DOKUMENTASI: 'event_qr_dokumentasi'
 };
 
 const getFromStorage = <T>(key: string, defaultValue: T): T => {
@@ -235,6 +236,11 @@ export const pullFromSpreadsheet = async () => {
     if (attendanceData && Array.isArray(attendanceData)) {
       db.setAttendance(sanitize(attendanceData));
     }
+
+    const dokumentasiData = getTableData('dokumentasi');
+    if (dokumentasiData && Array.isArray(dokumentasiData)) {
+      db.setDokumentasi(sanitize(dokumentasiData));
+    }
     
     return { success: true, data };
   } catch (error) {
@@ -298,6 +304,13 @@ export const db = {
   setAttendance: (attendance: Attendance[], action?: 'create' | 'update' | 'delete', data?: any) => {
     saveToStorage(STORAGE_KEYS.ATTENDANCE, attendance);
     if (action && data) return syncToSpreadsheet('Attendance', action, data);
+    return Promise.resolve({ success: true });
+  },
+
+  getDokumentasi: () => getFromStorage<Dokumentasi[]>(STORAGE_KEYS.DOKUMENTASI, []),
+  setDokumentasi: (dokumentasi: Dokumentasi[], action?: 'create' | 'update' | 'delete', data?: any) => {
+    saveToStorage(STORAGE_KEYS.DOKUMENTASI, dokumentasi);
+    if (action && data) return syncToSpreadsheet('dokumentasi', action, data);
     return Promise.resolve({ success: true });
   },
 

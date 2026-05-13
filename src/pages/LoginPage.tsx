@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
-import { LogIn, QrCode, ShieldCheck, Users, RefreshCw } from 'lucide-react';
+import { LogIn, QrCode, ShieldCheck, Users, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { AuthState } from '../App';
 import { db, pullFromSpreadsheet } from '../lib/db';
 import { cn } from '../lib/utils';
@@ -18,6 +18,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [mode, setMode] = useState<'STAFF' | 'PESERTA'>('STAFF');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(false);
   const [isIframe, setIsIframe] = useState(false);
@@ -174,14 +175,23 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </div>
             <div className="space-y-1.5">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
-                placeholder="&bull;&bull;&bull;&bull;&bull;&bull;"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all pr-12"
+                  placeholder="&bull;&bull;&bull;&bull;&bull;&bull;"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-emerald-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
             <button
               type="submit"

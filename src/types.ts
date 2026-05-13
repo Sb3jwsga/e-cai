@@ -42,3 +42,10 @@ export interface Attendance {
   timestamp: string;
   panitiaId: string;
 }
+
+export interface Dokumentasi {
+  id: string;
+  tanggal: string;
+  nama_event: string;
+  link: string;
+}

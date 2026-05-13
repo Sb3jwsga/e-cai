@@ -4,10 +4,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { User, Peserta, Event, Attendance, AttendanceType } from '../types';
+import { User, Peserta, Event, Attendance, AttendanceType, Dokumentasi } from '../types';
 import { db, pullFromSpreadsheet } from '../lib/db';
 import DashboardLayout from '../components/DashboardLayout';
-import { Scan, Users, Calendar, CheckCircle2, XCircle, AlertCircle, QrCode, Clock, X, MapPin, RefreshCw } from 'lucide-react';
+import { Scan, Users, Calendar, CheckCircle2, XCircle, AlertCircle, QrCode, Clock, X, MapPin, RefreshCw, Image, ExternalLink } from 'lucide-react';
 import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 import { cn } from '../lib/utils';
 
@@ -118,6 +118,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
   const [filterDesa, setFilterDesa] = useState('');
   const [selectedDetailEvent, setSelectedDetailEvent] = useState<Event | null>(null);
   const [scannerError, setScannerError] = useState<string | null>(null);
+  const [dokumentasi, setDokumentasi] = useState<Dokumentasi[]>([]);
 
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -126,6 +127,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
     setEvents(evs);
     if (evs.length > 0 && !selectedEventId) setSelectedEventId(evs[0].id);
     setPeserta(db.getPeserta());
+    setDokumentasi(db.getDokumentasi());
   };
 
   const syncData = async () => {
@@ -157,6 +159,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
     { id: 'SCAN', label: 'Scan QR', icon: <Scan className="w-4 h-4" /> },
     { id: 'PESERTA', label: 'Data Peserta', icon: <Users className="w-4 h-4" /> },
     { id: 'JADWAL', label: 'Jadwal Event', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'DOKUMENTASI', label: 'Dokumentasi', icon: <Image className="w-4 h-4" /> },
   ];
 
   const handleScanSuccess = async (decodedText: string) => {
@@ -622,6 +625,53 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
                 </div>
               ))}
            </div>
+        </div>
+      )}
+
+      {activeTab === 'DOKUMENTASI' && (
+        <div className="space-y-8 animate-in fade-in duration-500">
+          <div className="flex flex-col gap-2">
+            <h3 className="font-bold text-2xl text-slate-800 tracking-tight flex items-center gap-3">
+              <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
+                <Image className="w-5 h-5" />
+              </div>
+              Dokumentasi Event
+            </h3>
+            <p className="text-sm text-slate-400 font-medium pl-14">Klik card untuk membuka foto dan video dokumentasi di Google Drive</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {dokumentasi.length === 0 ? (
+              <div className="col-span-full py-20 bg-white border border-dashed border-slate-200 rounded-[32px] text-center">
+                 <Image className="w-12 h-12 text-slate-100 mx-auto mb-4" />
+                 <p className="text-slate-400 font-medium italic">Belum ada dokumentasi tersedia</p>
+              </div>
+            ) : (
+              dokumentasi.map(doc => (
+                <a 
+                  key={doc.id} 
+                  href={doc.link} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="bg-white border border-slate-200 p-8 rounded-[36px] transition-all hover:shadow-2xl hover:-translate-y-1 hover:border-emerald-200 group flex flex-col"
+                >
+                  <div className="mb-4">
+                    <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full uppercase tracking-wider">
+                      {formatDate(doc.tanggal)}
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-xl mb-6 tracking-tight uppercase leading-tight group-hover:text-emerald-700 transition-colors uppercase">{doc.nama_event}</h4>
+                  
+                  <div className="mt-auto pt-6 border-t border-slate-50 flex justify-between items-center">
+                     <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                       <ExternalLink className="w-3.5 h-3.5" />
+                       Lihat Dokumentasi
+                     </span>
+                  </div>
+                </a>
+              ))
+            )}
+          </div>
         </div>
       )}
       {selectedDetailEvent && (
