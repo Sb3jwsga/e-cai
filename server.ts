@@ -31,6 +31,7 @@ async function startServer() {
         headers: {
           "Content-Type": "application/json",
         },
+        redirect: 'follow'
       };
 
       if (req.method !== "GET" && req.method !== "HEAD") {
@@ -39,9 +40,17 @@ async function startServer() {
 
       const response = await fetch(url.toString(), options);
       const text = await response.text();
-      console.log(`[Proxy] Apps Script Response: ${text.substring(0, 100)}...`);
-      const data = JSON.parse(text);
-      res.json(data);
+      
+      try {
+        const data = JSON.parse(text);
+        res.json(data);
+      } catch (e) {
+        console.error("[Proxy] JSON Parse Error. Raw body:", text);
+        res.status(500).json({ 
+          error: "Invalid JSON response from Google Apps Script", 
+          details: text.substring(0, 500) 
+        });
+      }
     } catch (error) {
       console.error("Proxy Error:", error);
       res.status(500).json({ error: "Failed to connect to Google Apps Script. Check APPSCRIPT_URL." });

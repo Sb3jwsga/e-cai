@@ -36,8 +36,16 @@ export const syncToSpreadsheet = async (table: string, action: 'create' | 'updat
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, table, data })
     });
-    const result = await response.json();
-    return { success: true, ...result };
+    
+    const text = await response.text();
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch (e) {
+      return { success: false, error: `Invalid JSON: ${text.substring(0, 50) }` };
+    }
+    
+    return { success: response.ok, ...result };
   } catch (error) {
     console.error('Sync Error:', error);
     return { success: false, error: String(error) };
@@ -55,12 +63,20 @@ export const pullFromSpreadsheet = async () => {
       headers: { 'Accept': 'application/json' }
     });
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error('Failed to parse Cloud Data:', text);
+      throw new Error(`Invalid response from server: ${text.substring(0, 100)}`);
     }
     
-    const data = await response.json();
-    console.log('Cloud data raw result:', data);
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    }
+    
+    console.log('Cloud data decoded:', data);
     
     if (data.error) {
       console.error('Apps Script Error:', data.error);

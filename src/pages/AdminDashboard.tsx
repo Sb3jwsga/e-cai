@@ -447,12 +447,12 @@ function ManagePeserta() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Kelompok</label>
-                      <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl outline-none px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all focus:bg-white" 
+                      <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl outline-none px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all focus:bg-white" 
                       value={formData.kelompok || ''} onChange={e => setFormData({...formData, kelompok: e.target.value})} placeholder="Klp" />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Desa</label>
-                      <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl outline-none px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all focus:bg-white" 
+                      <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl outline-none px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all focus:bg-white" 
                       value={formData.desa || ''} onChange={e => setFormData({...formData, desa: e.target.value})} placeholder="Desa" />
                     </div>
                   </div>
