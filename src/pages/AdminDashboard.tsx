@@ -13,6 +13,95 @@ import { Users, Calendar, BarChart3, Plus, Trash2, Edit, Save, X, Phone, MapPin,
 import { QRCodeSVG } from 'qrcode.react';
 import { cn } from '../lib/utils';
 
+// Helper to format date as dd/mm/yyyy
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '-';
+  
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  // Fallback for dd/mm/yyyy if Date parsing fails
+  if (dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+    }
+  }
+  
+  return dateStr;
+};
+
+const formatTime24 = (timeStr: string) => {
+  if (!timeStr) return '-';
+  
+  // Try Date parsing first (handles ISO strings)
+  const d = new Date(timeStr);
+  if (!isNaN(d.getTime()) && (timeStr.includes('T') || timeStr.includes('-') || timeStr.includes('/'))) {
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+  
+  // Handle AM/PM text formats
+  if (timeStr.toLowerCase().includes('am') || timeStr.toLowerCase().includes('pm')) {
+    const parts = timeStr.trim().split(/\s+/);
+    const time = parts[0];
+    const modifier = parts[1] || '';
+    if (time && modifier) {
+       let [hours, minutes] = time.split(':');
+       let h = parseInt(hours, 10);
+       if (modifier.toLowerCase() === 'pm' && h < 12) h += 12;
+       if (modifier.toLowerCase() === 'am' && h === 12) h = 0;
+       return `${h.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+    }
+  }
+
+  // Extract HH:mm using regex if other methods fail
+  const timeMatch = timeStr.match(/(\d{1,2})[:.](\d{2})/);
+  if (timeMatch) {
+    const h = timeMatch[1].padStart(2, '0');
+    const m = timeMatch[2];
+    return `${h}:${m}`;
+  }
+
+  return timeStr;
+};
+
+const formatDateTime = (dateStr: string | number | Date) => {
+  if (!dateStr) return '-';
+  
+  let d: Date;
+  if (dateStr instanceof Date) {
+    d = dateStr;
+  } else if (typeof dateStr === 'string' && dateStr.includes('/') && !dateStr.includes('T')) {
+    // Try parsing dd/mm/yyyy HH:mm
+    const parts = dateStr.split(/[\/\s:]/);
+    if (parts.length >= 3) {
+       const [day, month, year, hours, minutes] = parts;
+       d = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours || '0'), parseInt(minutes || '0'));
+    } else {
+       d = new Date(dateStr);
+    }
+  } else {
+    d = new Date(dateStr);
+  }
+
+  if (isNaN(d.getTime())) return String(dateStr);
+  
+  const date = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = d.getHours().toString().padStart(2, '0');
+  const minutes = d.getMinutes().toString().padStart(2, '0');
+  return `${date}/${month}/${year} ${hours}:${minutes}`;
+};
+
 interface AdminDashboardProps {
   user: User;
   onLogout: () => void;
@@ -37,7 +126,14 @@ export default function AdminDashboard({ user, onLogout }: AdminDashboardProps) 
   const syncData = async () => {
     setIsSyncing(true);
     try {
-      await pullFromSpreadsheet();
+      const result = await pullFromSpreadsheet();
+      if (result && 'error' in result) {
+        console.error('Sync failed:', result.error);
+        // Only alert if it's not the initial starting server error
+        if (!result.error.toLowerCase().includes('starting server')) {
+           // We could use a toast here, but for now just console error to avoid annoying popups
+        }
+      }
       loadData();
     } finally {
       setIsSyncing(false);
@@ -122,7 +218,7 @@ export default function AdminDashboard({ user, onLogout }: AdminDashboardProps) 
                         </div>
                         <div className="text-right">
                           <p className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg inline-block uppercase">{record.type}</p>
-                          <p className="text-[10px] text-slate-400 font-mono mt-1.5">{new Date(record.timestamp).toLocaleTimeString()}</p>
+                          <p className="text-[10px] text-slate-400 font-mono mt-1.5">{formatDateTime(record.timestamp)}</p>
                         </div>
                       </div>
                     );
@@ -135,19 +231,36 @@ export default function AdminDashboard({ user, onLogout }: AdminDashboardProps) 
       )}
 
       {activeTab === 'PESERTA' && (
-        <ManagePeserta />
+        <ManagePeserta 
+          peserta={peserta} 
+          setPeserta={setPeserta} 
+          events={events} 
+          attendance={attendance} 
+        />
       )}
 
       {activeTab === 'EVENT' && (
-        <ManageEvents />
+        <ManageEvents 
+          events={events} 
+          setEvents={setEvents} 
+        />
       )}
 
       {activeTab === 'ANALISA' && (
-        <AttendanceAnalysis />
+        <AttendanceAnalysis 
+          peserta={peserta} 
+          events={events} 
+          attendance={attendance}
+          syncData={syncData}
+          isSyncing={isSyncing}
+        />
       )}
 
       {activeTab === 'STAFF' && (
-        <ManageStaff />
+        <ManageStaff 
+          users={users} 
+          setUsers={setUsers} 
+        />
       )}
     </DashboardLayout>
   );
@@ -168,10 +281,17 @@ function StatCard({ label, value, color }: { label: string; value: number | stri
   );
 }
 
-function ManagePeserta() {
-  const [peserta, setPeserta] = useState<Peserta[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [attendance, setAttendance] = useState<Attendance[]>([]);
+function ManagePeserta({ 
+  peserta, 
+  setPeserta, 
+  events, 
+  attendance 
+}: { 
+  peserta: Peserta[]; 
+  setPeserta: React.Dispatch<React.SetStateAction<Peserta[]>>;
+  events: Event[];
+  attendance: Attendance[];
+}) {
   const [selectedEventId, setSelectedEventId] = useState('');
   const [scanType, setScanType] = useState<AttendanceType>('MATERI');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -182,14 +302,6 @@ function ManagePeserta() {
   const [filterKelompok, setFilterKelompok] = useState('');
   const [filterDesa, setFilterDesa] = useState('');
 
-  useEffect(() => {
-    setPeserta(db.getPeserta());
-    const evs = db.getEvents();
-    setEvents(evs);
-    if (evs.length > 0) setSelectedEventId(evs[0].id);
-    setAttendance(db.getAttendance());
-  }, []);
-
   const filteredPeserta = peserta.filter(p => {
     const matchesSearch = p.nama_lengkap.toLowerCase().includes(search.toLowerCase()) || 
                           p.id.toLowerCase().includes(search.toLowerCase());
@@ -198,7 +310,10 @@ function ManagePeserta() {
     return matchesSearch && matchesKelompok && matchesDesa;
   });
 
-  const attendanceRecords = attendance.filter(a => a.eventId === selectedEventId && a.type === scanType);
+   const attendanceRecords = attendance.filter(a => 
+    (selectedEventId === '' || String(a.eventId).trim() === String(selectedEventId).trim()) && 
+    String(a.type).trim().toUpperCase() === String(scanType).trim().toUpperCase()
+  );
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -513,14 +628,15 @@ function ManagePeserta() {
   );
 }
 
-function ManageEvents() {
-  const [events, setEvents] = useState<Event[]>([]);
+function ManageEvents({ 
+  events, 
+  setEvents 
+}: { 
+  events: Event[]; 
+  setEvents: React.Dispatch<React.SetStateAction<Event[]>>;
+}) {
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState<Partial<Event>>({ type: 'MATERI' });
-
-  useEffect(() => {
-    setEvents(db.getEvents());
-  }, []);
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -581,7 +697,7 @@ function ManageEvents() {
                     <Trash2 className="w-4 h-4" />
                  </button>
                  <div className="mb-6 flex justify-between items-center pr-8 md:pr-0">
-                    <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full uppercase tracking-wider">{ev.tanggal_event}</span>
+                    <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full uppercase tracking-wider">{formatDate(ev.tanggal_event)}</span>
                     <span className={cn(
                        "text-[9px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-tighter",
                        ev.type === 'MAKAN' ? "bg-orange-50 text-orange-600 border-orange-100" : "bg-blue-50 text-blue-600 border-blue-100"
@@ -594,7 +710,7 @@ function ManageEvents() {
                  <div className="flex items-center gap-4 border-t border-slate-50 pt-6 mt-auto">
                     <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                        <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                       {ev.jam_mulai_event} - {ev.jam_selesai}
+                       {formatTime24(ev.jam_mulai_event)} - {formatTime24(ev.jam_selesai)}
                     </div>
                  </div>
               </div>
@@ -665,24 +781,23 @@ function ManageEvents() {
   );
 }
 
-function AttendanceAnalysis() {
-   const [peserta, setPeserta] = useState<Peserta[]>([]);
-   const [events, setEvents] = useState<Event[]>([]);
-   const [attendance, setAttendance] = useState<Attendance[]>([]);
+function AttendanceAnalysis({ 
+  peserta, 
+  events, 
+  attendance,
+  syncData,
+  isSyncing
+}: { 
+  peserta: Peserta[]; 
+  events: Event[]; 
+  attendance: Attendance[];
+  syncData: () => Promise<void>;
+  isSyncing: boolean;
+}) {
    const [selectedEventId, setSelectedEventId] = useState('');
    const [filterKelompok, setFilterKelompok] = useState('');
    const [filterDesa, setFilterDesa] = useState('');
    const [filterType, setFilterType] = useState<'MATERI' | 'MAKAN'>('MATERI');
-
-   useEffect(() => {
-      setPeserta(db.getPeserta());
-      const evs = db.getEvents();
-      setEvents(evs);
-      if (evs.length > 0 && !selectedEventId) {
-         setSelectedEventId(evs[0].id);
-      }
-      setAttendance(db.getAttendance());
-   }, []);
 
    useEffect(() => {
       if (selectedEventId) {
@@ -699,12 +814,16 @@ function AttendanceAnalysis() {
       return matchesKelompok && matchesDesa;
    });
 
-   const attendanceRecords = attendance.filter(a => a.eventId === selectedEventId && a.type === filterType);
+   const attendanceRecords = attendance.filter(a => {
+      const matchesEvent = selectedEventId === '' || String(a.eventId).trim() === String(selectedEventId).trim();
+      const matchesType = String(a.type).trim().toUpperCase() === String(filterType).trim().toUpperCase();
+      return matchesEvent && matchesType;
+   });
 
    const exportToPDF = () => {
       const doc = new jsPDF();
       const event = events.find(e => e.id === selectedEventId);
-      const eventName = event?.nama_event || 'Unknown Event';
+      const eventName = event?.nama_event || 'Semua Kegiatan';
       const eventDate = event?.tanggal_event || '-';
       
       // Header
@@ -715,11 +834,11 @@ function AttendanceAnalysis() {
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.text(`Event: ${eventName}`, 14, 32);
-      doc.text(`Tanggal: ${eventDate}`, 14, 37);
+      doc.text(`Tanggal: ${formatDate(eventDate)}`, 14, 37);
       doc.text(`Tipe Absen: ${filterType}`, 14, 42);
       doc.text(`Filter Kelompok: ${filterKelompok || 'Semua Kelompok'}`, 14, 47);
       doc.text(`Filter Desa: ${filterDesa || 'Semua Desa'}`, 14, 52);
-      doc.text(`Dicetak pada: ${new Date().toLocaleString()}`, 14, 57);
+      doc.text(`Dicetak pada: ${formatDateTime(new Date())}`, 14, 57);
       
       // Stats
       doc.setFontSize(10);
@@ -727,7 +846,7 @@ function AttendanceAnalysis() {
       doc.text(`Total Peserta: ${stats.total} | Hadir: ${stats.hadir} | Belum: ${stats.belum}`, 14, 67);
 
       const tableData = filteredPeserta.map((p, index) => {
-         const record = attendanceRecords.find(a => a.pesertaId === p.id);
+         const record = attendanceRecords.find(a => String(a.pesertaId).trim() === String(p.id).trim());
          return [
             index + 1,
             p.id,
@@ -735,7 +854,7 @@ function AttendanceAnalysis() {
             p.jenis_kelamin,
             `${p.kelompok} / ${p.desa}`,
             record ? 'TERVERIFIKASI' : 'BELUM ABSEN',
-            record ? new Date(record.timestamp).toLocaleTimeString() : '-'
+            record ? formatDateTime(record.timestamp) : '-'
          ];
       });
 
@@ -767,12 +886,12 @@ function AttendanceAnalysis() {
 
    const stats = {
       total: filteredPeserta.length,
-      hadir: filteredPeserta.filter(p => attendanceRecords.some(a => a.pesertaId === p.id)).length,
-      belum: filteredPeserta.filter(p => !attendanceRecords.some(a => a.pesertaId === p.id)).length,
-      hadirL: filteredPeserta.filter(p => p.jenis_kelamin === 'Laki-laki' && attendanceRecords.some(a => a.pesertaId === p.id)).length,
-      hadirP: filteredPeserta.filter(p => p.jenis_kelamin === 'Perempuan' && attendanceRecords.some(a => a.pesertaId === p.id)).length,
-      belumL: filteredPeserta.filter(p => p.jenis_kelamin === 'Laki-laki' && !attendanceRecords.some(a => a.pesertaId === p.id)).length,
-      belumP: filteredPeserta.filter(p => p.jenis_kelamin === 'Perempuan' && !attendanceRecords.some(a => a.pesertaId === p.id)).length,
+      hadir: filteredPeserta.filter(p => attendanceRecords.some(a => String(a.pesertaId).trim() === String(p.id).trim())).length,
+      belum: filteredPeserta.filter(p => !attendanceRecords.some(a => String(a.pesertaId).trim() === String(p.id).trim())).length,
+      hadirL: filteredPeserta.filter(p => p.jenis_kelamin === 'Laki-laki' && attendanceRecords.some(a => String(a.pesertaId).trim() === String(p.id).trim())).length,
+      hadirP: filteredPeserta.filter(p => p.jenis_kelamin === 'Perempuan' && attendanceRecords.some(a => String(a.pesertaId).trim() === String(p.id).trim())).length,
+      belumL: filteredPeserta.filter(p => p.jenis_kelamin === 'Laki-laki' && !attendanceRecords.some(a => String(a.pesertaId).trim() === String(p.id).trim())).length,
+      belumP: filteredPeserta.filter(p => p.jenis_kelamin === 'Perempuan' && !attendanceRecords.some(a => String(a.pesertaId).trim() === String(p.id).trim())).length,
    };
 
    return (
@@ -785,12 +904,21 @@ function AttendanceAnalysis() {
                   </div>
                   <h3 className="font-bold text-slate-800">Analisa Kehadiran Peserta</h3>
                </div>
-               <button 
-                  onClick={exportToPDF}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white font-bold text-xs uppercase rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10"
-               >
-                  <Download className="w-4 h-4" /> Export PDF
-               </button>
+               <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <button 
+                     onClick={syncData}
+                     className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-emerald-600 border border-emerald-100 font-bold text-xs uppercase rounded-xl hover:bg-emerald-50 transition-all shadow-sm"
+                  >
+                     <RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />
+                     {isSyncing ? 'Syncing...' : 'Sync Cloud'}
+                  </button>
+                  <button 
+                     onClick={exportToPDF}
+                     className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white font-bold text-xs uppercase rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10"
+                  >
+                     <Download className="w-4 h-4" /> Export PDF
+                  </button>
+               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-slate-50">
@@ -802,6 +930,7 @@ function AttendanceAnalysis() {
                         onChange={(e) => setSelectedEventId(e.target.value)}
                         className="w-full pl-4 pr-10 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-xs font-bold bg-slate-50 focus:bg-white appearance-none"
                      >
+                        <option value="">Semua Kegiatan</option>
                         {events.map(ev => (
                            <option key={ev.id} value={ev.id}>{ev.nama_event}</option>
                         ))}
@@ -888,7 +1017,7 @@ function AttendanceAnalysis() {
                   <div className="p-8 text-center text-slate-400 italic">Data tidak ditemukan</div>
                ) : (
                   filteredPeserta.map(p => {
-                     const record = attendanceRecords.find(a => a.pesertaId === p.id);
+                     const record = attendanceRecords.find(a => String(a.pesertaId).trim() === String(p.id).trim());
                      return (
                         <div key={p.id} className="p-5 space-y-4">
                            <div className="flex justify-between items-start">
@@ -926,7 +1055,7 @@ function AttendanceAnalysis() {
                </thead>
                <tbody className="text-sm">
                   {filteredPeserta.map(p => {
-                     const record = attendanceRecords.find(a => a.pesertaId === p.id);
+                     const record = attendanceRecords.find(a => String(a.pesertaId).trim() === String(p.id).trim());
                      return (
                         <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-all group">
                            <td className="px-8 py-5">
@@ -947,7 +1076,7 @@ function AttendanceAnalysis() {
                               </span>
                            </td>
                            <td className="px-8 py-5 text-right font-mono text-xs text-slate-400">
-                              {record ? new Date(record.timestamp).toLocaleTimeString() : '-'}
+                              {record ? formatDateTime(record.timestamp) : '-'}
                            </td>
                         </tr>
                      );
@@ -959,14 +1088,15 @@ function AttendanceAnalysis() {
    );
 }
 
-function ManageStaff() {
-   const [users, setUsers] = useState<User[]>([]);
+function ManageStaff({ 
+  users, 
+  setUsers 
+}: { 
+  users: User[]; 
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+}) {
    const [formData, setFormData] = useState<Partial<User>>({ level: 'PANITIA' });
    const [isAdding, setIsAdding] = useState(false);
-
-   useEffect(() => {
-      setUsers(db.getUsers());
-   }, []);
 
    const [isSaving, setIsSaving] = useState(false);
 

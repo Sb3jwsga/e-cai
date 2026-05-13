@@ -42,7 +42,11 @@ export const syncToSpreadsheet = async (table: string, action: 'create' | 'updat
     try {
       result = JSON.parse(text);
     } catch (e) {
-      return { success: false, error: `Invalid JSON: ${text.substring(0, 50) }` };
+      const isStartingPage = text.includes('Please wait while your application starts') || text.includes('Starting Server');
+      if (isStartingPage) {
+        return { success: false, error: 'Server is still starting, please wait a moment and try again.' };
+      }
+      return { success: false, error: `Invalid JSON response: ${text.substring(0, 50)}` };
     }
     
     return { success: response.ok, ...result };
@@ -69,7 +73,11 @@ export const pullFromSpreadsheet = async () => {
       data = JSON.parse(text);
     } catch (e) {
       console.error('Failed to parse Cloud Data:', text);
-      throw new Error(`Invalid response from server: ${text.substring(0, 100)}`);
+      const isStartingPage = text.includes('Please wait while your application starts') || text.includes('Starting Server');
+      if (isStartingPage) {
+        throw new Error('Server is still starting, please wait a moment and try again.');
+      }
+      throw new Error(`Invalid response from server (non-JSON). Make sure the API is working correctly. Response starts with: ${text.substring(0, 50)}`);
     }
     
     if (!response.ok) {
@@ -108,11 +116,63 @@ export const pullFromSpreadsheet = async () => {
             cleanKey = 'id';
           }
           
+          // Alias for Attendance
+          if (['eventid', 'idevent', 'kegiatanid', 'eventld'].includes(cleanKey)) {
+            cleanKey = 'eventId';
+          }
+          if (['pesertaid', 'idpeserta', 'participantid', 'pesertald'].includes(cleanKey)) {
+            cleanKey = 'pesertaId';
+          }
+          if (['panitiaid', 'idpanitia', 'staffid', 'panitiald'].includes(cleanKey)) {
+            cleanKey = 'panitiaId';
+          }
+          if (['waktu', 'tanggal', 'time', 'date', 'timestamp'].includes(cleanKey)) {
+            cleanKey = 'timestamp';
+          }
+
+          // Alias for Event (already lowercase in types.ts but some might be different)
+          if (['namaevent', 'judul', 'eventname'].includes(cleanKey)) {
+             cleanKey = 'nama_event';
+          }
+          if (['tanggalat', 'tgl', 'date_event'].includes(cleanKey)) {
+             cleanKey = 'tanggal_event';
+          }
+          if (['mulai', 'start'].includes(cleanKey)) {
+             cleanKey = 'jam_mulai_event';
+          }
+          if (['selesai', 'end', 'jam_selesai_event'].includes(cleanKey)) {
+             cleanKey = 'jam_selesai';
+          }
+          if (['desc', 'keterangan', 'deskripsi_event'].includes(cleanKey)) {
+             cleanKey = 'deskripsi';
+          }
+          
+          // Alias for Peserta
+          if (['namalengkap', 'fullname'].includes(cleanKey)) {
+             cleanKey = 'nama_lengkap';
+          }
+          if (['jeniskelamin', 'gender', 'sex', 'jk'].includes(cleanKey)) {
+             cleanKey = 'jenis_kelamin';
+          }
+          if (['nomerwa', 'whatsapp', 'wa', 'hp', 'telepon'].includes(cleanKey)) {
+             cleanKey = 'nomer_whatsapp';
+          }
+          
           const rawValue = item[key];
           let value = (rawValue !== null && rawValue !== undefined) ? String(rawValue).trim() : '';
           
-          if (cleanKey === 'level') {
+          if (cleanKey === 'level' || cleanKey === 'type') {
             value = value.toUpperCase();
+          }
+
+          if (cleanKey === 'jenis_kelamin') {
+            const v = value.toLowerCase();
+            if (v.includes('laki') || v === 'l') value = 'Laki-laki';
+            else if (v.includes('perempuan') || v === 'p') value = 'Perempuan';
+          }
+          
+          if (['id', 'eventid', 'pesertaid', 'panitiaid'].includes(cleanKey)) {
+             value = value.trim();
           }
           
           newItem[cleanKey] = value;

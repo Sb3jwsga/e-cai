@@ -11,6 +11,95 @@ import { Calendar, User as UserIcon, CheckCircle2, Circle, Clock, QrCode, AlertC
 import { QRCodeSVG } from 'qrcode.react';
 import { cn } from '../lib/utils';
 
+// Helper to format date as dd/mm/yyyy
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '-';
+  
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  // Fallback for dd/mm/yyyy if Date parsing fails
+  if (dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+    }
+  }
+  
+  return dateStr;
+};
+
+const formatTime24 = (timeStr: string) => {
+  if (!timeStr) return '-';
+  
+  // Try Date parsing first (handles ISO strings)
+  const d = new Date(timeStr);
+  if (!isNaN(d.getTime()) && (timeStr.includes('T') || timeStr.includes('-') || timeStr.includes('/'))) {
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+  
+  // Handle AM/PM text formats
+  if (timeStr.toLowerCase().includes('am') || timeStr.toLowerCase().includes('pm')) {
+    const parts = timeStr.trim().split(/\s+/);
+    const time = parts[0];
+    const modifier = parts[1] || '';
+    if (time && modifier) {
+       let [hours, minutes] = time.split(':');
+       let h = parseInt(hours, 10);
+       if (modifier.toLowerCase() === 'pm' && h < 12) h += 12;
+       if (modifier.toLowerCase() === 'am' && h === 12) h = 0;
+       return `${h.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+    }
+  }
+
+  // Extract HH:mm using regex if other methods fail
+  const timeMatch = timeStr.match(/(\d{1,2})[:.](\d{2})/);
+  if (timeMatch) {
+    const h = timeMatch[1].padStart(2, '0');
+    const m = timeMatch[2];
+    return `${h}:${m}`;
+  }
+
+  return timeStr;
+};
+
+const formatDateTime = (dateStr: string | number | Date) => {
+  if (!dateStr) return '-';
+  
+  let d: Date;
+  if (dateStr instanceof Date) {
+    d = dateStr;
+  } else if (typeof dateStr === 'string' && dateStr.includes('/') && !dateStr.includes('T')) {
+    // Try parsing dd/mm/yyyy HH:mm
+    const parts = dateStr.split(/[\/\s:]/);
+    if (parts.length >= 3) {
+       const [day, month, year, hours, minutes] = parts;
+       d = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours || '0'), parseInt(minutes || '0'));
+    } else {
+       d = new Date(dateStr);
+    }
+  } else {
+    d = new Date(dateStr);
+  }
+
+  if (isNaN(d.getTime())) return String(dateStr);
+  
+  const date = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = d.getHours().toString().padStart(2, '0');
+  const minutes = d.getMinutes().toString().padStart(2, '0');
+  return `${date}/${month}/${year} ${hours}:${minutes}`;
+};
+
 interface PesertaDashboardProps {
   peserta: Peserta;
   onLogout: () => void;
@@ -76,8 +165,8 @@ export default function PesertaDashboard({ peserta, onLogout }: PesertaDashboard
                               <div>
                                  <h4 className="font-bold text-slate-800 text-lg leading-tight uppercase tracking-tight">{ev.nama_event}</h4>
                                  <div className="flex items-center gap-2 mt-2">
-                                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg uppercase">{ev.tanggal_event}</span>
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">&bull; {ev.jam_mulai_event} WIB</span>
+                                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg uppercase">{formatDate(ev.tanggal_event)}</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">&bull; {formatTime24(ev.jam_mulai_event)} WIB</span>
                                  </div>
                               </div>
                            </div>
@@ -130,7 +219,7 @@ export default function PesertaDashboard({ peserta, onLogout }: PesertaDashboard
                         <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-md transition-all">
                            <div className="flex justify-between items-start mb-4">
                               <h4 className="font-bold text-slate-800 tracking-tight uppercase leading-tight">{ev.nama_event}</h4>
-                              <span className="text-[10px] font-bold bg-slate-900 text-white px-3 py-1 rounded-lg tracking-wider">{ev.jam_mulai_event}</span>
+                              <span className="text-[10px] font-bold bg-slate-900 text-white px-3 py-1 rounded-lg tracking-wider">{formatTime24(ev.jam_mulai_event)}</span>
                            </div>
                            <p className="text-sm text-slate-500 leading-relaxed font-medium">{ev.deskripsi_event}</p>
                         </div>
@@ -186,7 +275,7 @@ function AttendanceStatus({ title, isPresent, time }: { title: string; isPresent
             {isPresent ? <CheckCircle2 className="w-8 h-8" /> : <div className="w-4 h-4 rounded-full border-2 border-slate-100" />}
          </div>
          <p className="text-[11px] font-bold tracking-[0.1em]">
-            {isPresent ? (time ? new Date(time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'TERKONFIRMASI') : 'BELUM SCAN'}
+            {isPresent ? (time ? formatDateTime(time) : 'TERKONFIRMASI') : 'BELUM SCAN'}
          </p>
       </div>
    );
