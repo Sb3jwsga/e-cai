@@ -40,6 +40,16 @@ export default function DashboardLayout({
                 alt="Logo" 
                 className="w-full h-full object-contain"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent && !parent.querySelector('.fallback-icon')) {
+                    const div = document.createElement('div');
+                    div.className = "fallback-icon p-2 bg-emerald-600 rounded-lg shadow-sm";
+                    div.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/></svg>';
+                    parent.appendChild(div);
+                  }
+                }}
               />
             </div>
             <span className="font-bold text-xl tracking-tight text-slate-800 uppercase">E-CAI</span>
@@ -100,6 +110,16 @@ export default function DashboardLayout({
                 alt="Logo" 
                 className="w-full h-full object-contain"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent && !parent.querySelector('.fallback-icon')) {
+                    const div = document.createElement('div');
+                    div.className = "fallback-icon p-1.5 bg-emerald-600 rounded-lg shadow-sm";
+                    div.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/></svg>';
+                    parent.appendChild(div);
+                  }
+                }}
               />
             </div>
             <span className="font-bold text-lg tracking-tight text-slate-800">E-CAI</span>

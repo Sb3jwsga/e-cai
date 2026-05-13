@@ -249,39 +249,63 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 }
 
 function ScannerWrapper({ onScanSuccess, onError }: { onScanSuccess: (data: string) => void, onError: (err: string) => void }) {
+  const [retry, setRetry] = useState(0);
+
   useEffect(() => {
     let scanner: Html5QrcodeScanner | null = null;
     
+    // Slight delay to ensure the container is mounted
     const timer = setTimeout(() => {
       try {
+        const config = {
+          fps: 15,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          showTorchButtonIfSupported: true,
+          showZoomSliderIfSupported: true,
+          rememberLastUsedCamera: true,
+          supportedScanTypes: [0] // Camera only
+        };
+
         scanner = new Html5QrcodeScanner(
           "reader",
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          false
+          config,
+          /* verbose= */ false
         );
 
         scanner.render(
           (text) => onScanSuccess(text),
-          (err) => { /* ignore per-frame failures */ }
+          (err) => {
+            // Silence noisey per-frame errors
+          }
         );
       } catch (err) {
+        console.error("Scanner Error:", err);
         onError(String(err));
       }
-    }, 150);
+    }, 500);
 
     return () => {
       clearTimeout(timer);
       if (scanner) {
-        scanner.clear().catch(e => console.log("Cleanup silent"));
+        scanner.clear().catch(e => console.log("Scanner cleanup handled"));
       }
     };
-  }, [onScanSuccess, onError]);
+  }, [onScanSuccess, onError, retry]);
 
   return (
-    <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-black aspect-square flex items-center justify-center">
-      <div id="reader" className="w-full"></div>
-      <div className="absolute inset-0 border-4 border-emerald-500/30 pointer-events-none z-10"></div>
-      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] animate-pulse z-10 p-0"></div>
+    <div className="space-y-4">
+      <div className="relative rounded-3xl overflow-hidden border-2 border-emerald-500/20 bg-slate-900 aspect-square flex items-center justify-center shadow-xl shadow-emerald-500/5">
+        <div id="reader" className="w-full h-full [&_video]:rounded-3xl [&_img]:hidden border-none! [&_#html5-qrcode-button-camera-permission]:bg-emerald-600 [&_#html5-qrcode-button-camera-permission]:text-white [&_#html5-qrcode-button-camera-permission]:px-6 [&_#html5-qrcode-button-camera-permission]:py-3 [&_#html5-qrcode-button-camera-permission]:rounded-xl [&_#html5-qrcode-button-camera-permission]:font-bold [&_#html5-qrcode-button-camera-permission]:text-xs [&_#html5-qrcode-button-camera-permission]:uppercase [&_#html5-qrcode-button-camera-permission]:tracking-widest [&_#html5-qrcode-anchor-scan-type-change]:hidden"></div>
+        <div className="absolute inset-0 border-[12px] border-emerald-500/5 pointer-events-none z-10"></div>
+        <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.8)] animate-pulse z-20 pointer-events-none opacity-40"></div>
+      </div>
+      <button 
+        onClick={() => setRetry(prev => prev + 1)}
+        className="w-full py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-emerald-600 transition-colors flex items-center justify-center gap-2"
+      >
+        <RefreshCw className="w-3 h-3" /> Muat Ulang Kamera
+      </button>
     </div>
   );
 }

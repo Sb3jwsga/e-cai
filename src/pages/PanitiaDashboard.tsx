@@ -28,6 +28,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
   const [filterKelompok, setFilterKelompok] = useState('');
   const [filterDesa, setFilterDesa] = useState('');
   const [selectedDetailEvent, setSelectedDetailEvent] = useState<Event | null>(null);
+  const [scannerError, setScannerError] = useState<string | null>(null);
 
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -70,6 +71,7 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
   ];
 
   const handleScanSuccess = (decodedText: string) => {
+    setScannerError(null); 
     // Check if participant exists
     const p = peserta.find(pes => pes.id === decodedText);
     if (!p) {
@@ -110,6 +112,13 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
 
     // Reset result after 3 seconds
     setTimeout(() => setScanResult(null), 3000);
+  };
+
+  const handleScanError = (err: string) => {
+    console.error("Scanner Error:", err);
+    if (err.toLowerCase().includes("notfound") || err.toLowerCase().includes("allowed") || err.toLowerCase().includes("permission")) {
+       setScannerError("Kamera tidak dapat diakses. Pastikan izin kamera diberikan atau buka di tab baru jika masih gagal.");
+    }
   };
 
   return (
@@ -231,7 +240,22 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-600 rounded-br-xl"></div>
  
                    <div className="w-full h-full bg-slate-50 rounded-2xl overflow-hidden relative border border-slate-100 shadow-inner">
-                      <ScannerComponent onScan={handleScanSuccess} />
+                      <ScannerComponent onScan={handleScanSuccess} onError={handleScanError} />
+                      {scannerError && (
+                        <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm z-30 p-8 flex flex-col items-center justify-center text-center">
+                          <AlertCircle className="w-12 h-12 text-amber-500 mb-4" />
+                          <p className="text-white font-bold mb-2">Masalah Kamera</p>
+                          <p className="text-slate-400 text-xs mb-6 leading-relaxed">{scannerError}</p>
+                          {isIframe && (
+                            <button 
+                              onClick={() => window.open(window.location.href, '_blank')}
+                              className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                            >
+                              Buka di Tab Baru
+                            </button>
+                          )}
+                        </div>
+                      )}
                       {/* Scanline */}
                       <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] z-10 pointer-events-none animate-pulse"></div>
                    </div>
@@ -549,36 +573,60 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
 }
 
 function ScannerComponent({ onScan, onError }: { onScan: (text: string) => void, onError?: (err: string) => void }) {
+  const [retry, setRetry] = useState(0);
+
   useEffect(() => {
     let scanner: Html5QrcodeScanner | null = null;
-
+ 
     const timer = setTimeout(() => {
       try {
+        const scannerConfig = {
+          fps: 15,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          showTorchButtonIfSupported: true,
+          showZoomSliderIfSupported: true,
+          rememberLastUsedCamera: true,
+          supportedScanTypes: [0] // Camera only
+        };
+ 
         scanner = new Html5QrcodeScanner(
           "reader-panitia",
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          false
+          scannerConfig,
+          /* verbose= */ false
         );
-
+ 
         scanner.render(
-          (text) => onScan(text),
-          (err) => { /* ignore per-frame failures */ }
+          (text) => {
+            onScan(text);
+          },
+          (err) => {
+            // Silence noisy per-frame failures
+          }
         );
       } catch (err) {
-        console.error("Scanner init error", err);
+        console.error("Scanner initialization failed:", err);
         if (onError) onError(String(err));
       }
-    }, 150);
-
+    }, 500);
+ 
     return () => {
       clearTimeout(timer);
       if (scanner) {
-        scanner.clear().catch(e => console.log("Cleanup silent"));
+        scanner.clear().catch(e => console.warn("Scanner cleanup warning:", e));
       }
     };
-  }, [onScan, onError]);
-
+  }, [onScan, onError, retry]);
+ 
   return (
-    <div id="reader-panitia" className="w-full"></div>
+    <div className="w-full space-y-4">
+      <div id="reader-panitia" className="w-full bg-slate-900 rounded-[2rem] overflow-hidden [&_video]:rounded-[2rem] [&_img]:hidden border-none! [&_#html5-qrcode-button-camera-permission]:bg-emerald-600 [&_#html5-qrcode-button-camera-permission]:text-white [&_#html5-qrcode-button-camera-permission]:px-6 [&_#html5-qrcode-button-camera-permission]:py-3 [&_#html5-qrcode-button-camera-permission]:rounded-xl [&_#html5-qrcode-button-camera-permission]:font-bold [&_#html5-qrcode-button-camera-permission]:text-xs [&_#html5-qrcode-button-camera-permission]:uppercase [&_#html5-qrcode-button-camera-permission]:tracking-widest [&_#html5-qrcode-anchor-scan-type-change]:hidden"></div>
+      <button 
+        onClick={() => setRetry(prev => prev + 1)}
+        className="w-full py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-emerald-600 transition-colors flex items-center justify-center gap-2"
+      >
+        <RefreshCw className="w-3 h-3" /> Muat Ulang Kamera
+      </button>
+    </div>
   );
 }
