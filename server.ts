@@ -16,7 +16,7 @@ async function startServer() {
   // Proxy API for Spreadsheet
   app.all("/api/spreadsheet", async (req, res) => {
     // URL hardcoded as requested
-    const appscriptUrl = "https://script.google.com/macros/s/AKfycbxi6msk29gK0rX4RoJm453HruTa5PTCxx20HSUWXI2F599BnORLQc1f2hobtMJgADh9/exec";
+    const appscriptUrl = "https://script.google.com/macros/s/AKfycbxV0pXMVsBvbYiDZKjkJP4JtJULBiKiAEoJhn90WGCwdoVe2WJ64dxzlyVxm_oIxT0W/exec";
     
     try {
       const url = new URL(appscriptUrl);
