@@ -93,11 +93,13 @@ export const pullFromSpreadsheet = async () => {
     }
     
     // Convert all values to string and keys to lowercase to avoid comparison issues
-    const sanitize = (list: any[]) => {
+    const sanitize = (list: any[], tableName: string) => {
       if (!list || !Array.isArray(list)) {
         console.warn('Expected array but got:', list);
         return [];
       }
+      const targetTable = tableName.toLowerCase().trim();
+      
       return list.map((item, index) => {
         const newItem: any = {};
         Object.keys(item).forEach(key => {
@@ -118,45 +120,61 @@ export const pullFromSpreadsheet = async () => {
           }
           
           // Alias for Attendance
-          if (['eventid', 'idevent', 'kegiatanid', 'eventld'].includes(cleanKey)) {
+          if (['eventid', 'idevent', 'kegiatanid', 'eventld', 'event_id'].includes(cleanKey)) {
             cleanKey = 'eventId';
           }
-          if (['pesertaid', 'idpeserta', 'participantid', 'pesertald'].includes(cleanKey)) {
+          if (['pesertaid', 'idpeserta', 'participantid', 'pesertald', 'peserta_id'].includes(cleanKey)) {
             cleanKey = 'pesertaId';
           }
-          if (['panitiaid', 'idpanitia', 'staffid', 'panitiald'].includes(cleanKey)) {
+          if (['panitiaid', 'idpanitia', 'staffid', 'panitiald', 'panitia_id'].includes(cleanKey)) {
             cleanKey = 'panitiaId';
           }
-          if (['waktu', 'tanggal', 'time', 'date', 'timestamp'].includes(cleanKey)) {
+          if (['waktu', 'time', 'timestamp', 'waktu_scan'].includes(cleanKey)) {
             cleanKey = 'timestamp';
           }
+          
+          // Special case for 'tanggal'
+          if (cleanKey === 'tanggal') {
+            if (targetTable.includes('attendance')) {
+              cleanKey = 'timestamp';
+            } else if (targetTable.includes('event')) {
+              cleanKey = 'tanggal_event';
+            } else if (targetTable.includes('dokumentasi')) {
+              cleanKey = 'tanggal';
+            }
+          }
 
-          // Alias for Event (already lowercase in types.ts but some might be different)
-          if (['namaevent', 'judul', 'eventname'].includes(cleanKey)) {
+          // Alias for Event
+          if (['namaevent', 'judul', 'eventname', 'nama_event'].includes(cleanKey)) {
              cleanKey = 'nama_event';
           }
-          if (['tanggalat', 'tgl', 'date_event'].includes(cleanKey)) {
+          if (['tanggalat', 'tgl', 'date_event', 'tanggal_event'].includes(cleanKey)) {
              cleanKey = 'tanggal_event';
           }
-          if (['mulai', 'start'].includes(cleanKey)) {
+          if (['mulai', 'start', 'jam_mulai', 'jammulai', 'jam_mulai_event'].includes(cleanKey)) {
              cleanKey = 'jam_mulai_event';
           }
-          if (['selesai', 'end', 'jam_selesai_event'].includes(cleanKey)) {
+          if (['selesai', 'end', 'jamselesai', 'jam_selesai_event', 'jam_selesai'].includes(cleanKey)) {
              cleanKey = 'jam_selesai';
           }
-          if (['desc', 'keterangan', 'deskripsi_event'].includes(cleanKey)) {
+          if (['desc', 'keterangan', 'deskripsi_event', 'deskripsi'].includes(cleanKey)) {
              cleanKey = 'deskripsi';
           }
           
           // Alias for Peserta
-          if (['namalengkap', 'fullname'].includes(cleanKey)) {
+          if (['namalengkap', 'fullname', 'nama_lengkap'].includes(cleanKey)) {
              cleanKey = 'nama_lengkap';
           }
-          if (['jeniskelamin', 'gender', 'sex', 'jk'].includes(cleanKey)) {
+          if (['jeniskelamin', 'gender', 'sex', 'jk', 'jenis_kelamin'].includes(cleanKey)) {
              cleanKey = 'jenis_kelamin';
           }
-          if (['nomerwa', 'whatsapp', 'wa', 'hp', 'telepon'].includes(cleanKey)) {
+          if (['nomerwa', 'whatsapp', 'wa', 'hp', 'telepon', 'nomer_whatsapp'].includes(cleanKey)) {
              cleanKey = 'nomer_whatsapp';
+          }
+          
+          // Alias for Dokumentasi
+          if (['link', 'drive', 'link_drive', 'link_google_drive'].includes(cleanKey)) {
+            cleanKey = 'link';
           }
           
           const rawValue = item[key];
@@ -209,7 +227,7 @@ export const pullFromSpreadsheet = async () => {
 
     const usersData = getTableData('user');
     if (usersData && Array.isArray(usersData)) {
-      const sanitizedUsers = sanitize(usersData);
+      const sanitizedUsers = sanitize(usersData, 'user');
       console.log('Sanitized Users for DB:', sanitizedUsers);
       
       // Merge with INITIAL_USERS to ensure admin/123 always works as fallback
@@ -224,22 +242,22 @@ export const pullFromSpreadsheet = async () => {
     }
     const pesertaData = getTableData('Peserta');
     if (pesertaData && Array.isArray(pesertaData)) {
-      db.setPeserta(sanitize(pesertaData));
+      db.setPeserta(sanitize(pesertaData, 'peserta'));
     }
     
     const eventsData = getTableData('Event');
     if (eventsData && Array.isArray(eventsData)) {
-      db.setEvents(sanitize(eventsData));
+      db.setEvents(sanitize(eventsData, 'event'));
     }
     
     const attendanceData = getTableData('Attendance');
     if (attendanceData && Array.isArray(attendanceData)) {
-      db.setAttendance(sanitize(attendanceData));
+      db.setAttendance(sanitize(attendanceData, 'attendance'));
     }
 
     const dokumentasiData = getTableData('dokumentasi');
     if (dokumentasiData && Array.isArray(dokumentasiData)) {
-      db.setDokumentasi(sanitize(dokumentasiData));
+      db.setDokumentasi(sanitize(dokumentasiData, 'dokumentasi'));
     }
     
     return { success: true, data };
