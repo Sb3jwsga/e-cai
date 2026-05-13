@@ -97,7 +97,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         <h1 className="mb-2 text-2xl font-bold text-center text-slate-800 tracking-tight text-emerald-700">E-CAI Pelaihari</h1>
-        <p className="mb-6 text-sm text-center text-slate-500">Sistem Presensi QR Code Terintegrasi</p>
+        <p className="mb-6 text-sm text-center text-slate-500">Sistem Presensi QR Code by PPG Pelaihari</p>
 
         <div className={cn(
           "flex items-center justify-center gap-2 mb-2 py-1.5 px-3 rounded-full border text-[10px] font-bold uppercase tracking-wider mx-auto w-fit transition-all",
