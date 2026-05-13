@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 import { LogIn, QrCode, ShieldCheck, Users, RefreshCw } from 'lucide-react';
 import { AuthState } from '../App';
 import { db, pullFromSpreadsheet } from '../lib/db';
@@ -250,45 +250,64 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
 function ScannerWrapper({ onScanSuccess, onError }: { onScanSuccess: (data: string) => void, onError: (err: string) => void }) {
   const [retry, setRetry] = useState(0);
+  const [isStarted, setIsStarted] = useState(false);
 
   useEffect(() => {
-    let scanner: Html5QrcodeScanner | null = null;
+    let html5QrCode: Html5Qrcode | null = null;
+    const elementId = "reader";
     
-    // Slight delay to ensure the container is mounted
-    const timer = setTimeout(() => {
+    const startScanner = async () => {
       try {
+        html5QrCode = new Html5Qrcode(elementId);
+        
         const config = {
           fps: 15,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
-          showTorchButtonIfSupported: true,
-          showZoomSliderIfSupported: true,
-          rememberLastUsedCamera: true,
-          supportedScanTypes: [0] // Camera only
         };
 
-        scanner = new Html5QrcodeScanner(
-          "reader",
+        // Try to start with back camera
+        await html5QrCode.start(
+          { facingMode: "environment" },
           config,
-          /* verbose= */ false
-        );
-
-        scanner.render(
-          (text) => onScanSuccess(text),
-          (err) => {
-            // Silence noisey per-frame errors
+          (decodedText) => {
+            onScanSuccess(decodedText);
+          },
+          (errorMessage) => {
+            // Silence noisy failures
           }
         );
+        setIsStarted(true);
       } catch (err) {
         console.error("Scanner Error:", err);
-        onError(String(err));
+        // Fallback for some browsers that don't support constraints
+        try {
+          if (html5QrCode) {
+            await html5QrCode.start(
+              { facingMode: "user" }, // Try front camera if back fails
+              { fps: 15, qrbox: { width: 250, height: 250 } },
+              onScanSuccess,
+              () => {}
+            );
+            setIsStarted(true);
+          }
+        } catch (innerErr) {
+          onError(String(innerErr));
+        }
       }
+    };
+
+    // Delay initialization
+    const timer = setTimeout(() => {
+      startScanner();
     }, 500);
 
     return () => {
       clearTimeout(timer);
-      if (scanner) {
-        scanner.clear().catch(e => console.log("Scanner cleanup handled"));
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => {
+          html5QrCode?.clear();
+        }).catch(err => console.log("Stop error handled"));
       }
     };
   }, [onScanSuccess, onError, retry]);
@@ -296,7 +315,15 @@ function ScannerWrapper({ onScanSuccess, onError }: { onScanSuccess: (data: stri
   return (
     <div className="space-y-4">
       <div className="relative rounded-3xl overflow-hidden border-2 border-emerald-500/20 bg-slate-900 aspect-square flex items-center justify-center shadow-xl shadow-emerald-500/5">
-        <div id="reader" className="w-full h-full [&_video]:rounded-3xl [&_img]:hidden border-none! [&_#html5-qrcode-button-camera-permission]:bg-emerald-600 [&_#html5-qrcode-button-camera-permission]:text-white [&_#html5-qrcode-button-camera-permission]:px-6 [&_#html5-qrcode-button-camera-permission]:py-3 [&_#html5-qrcode-button-camera-permission]:rounded-xl [&_#html5-qrcode-button-camera-permission]:font-bold [&_#html5-qrcode-button-camera-permission]:text-xs [&_#html5-qrcode-button-camera-permission]:uppercase [&_#html5-qrcode-button-camera-permission]:tracking-widest [&_#html5-qrcode-anchor-scan-type-change]:hidden"></div>
+        <div id="reader" className="w-full h-full [&_video]:rounded-3xl [&_video]:object-cover border-none!"></div>
+        {!isStarted && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm z-20">
+            <div className="flex flex-col items-center gap-4">
+              <RefreshCw className="w-10 h-10 text-emerald-500 animate-spin" />
+              <p className="text-white font-bold text-xs uppercase tracking-widest">Inisialisasi Kamera...</p>
+            </div>
+          </div>
+        )}
         <div className="absolute inset-0 border-[12px] border-emerald-500/5 pointer-events-none z-10"></div>
         <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.8)] animate-pulse z-20 pointer-events-none opacity-40"></div>
       </div>

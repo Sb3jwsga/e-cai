@@ -8,7 +8,7 @@ import { User, Peserta, Event, Attendance, AttendanceType } from '../types';
 import { db, pullFromSpreadsheet } from '../lib/db';
 import DashboardLayout from '../components/DashboardLayout';
 import { Scan, Users, Calendar, CheckCircle2, XCircle, AlertCircle, QrCode, Clock, X, MapPin, RefreshCw } from 'lucide-react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 import { cn } from '../lib/utils';
 
 interface PanitiaDashboardProps {
@@ -574,53 +574,79 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
 
 function ScannerComponent({ onScan, onError }: { onScan: (text: string) => void, onError?: (err: string) => void }) {
   const [retry, setRetry] = useState(0);
+  const [isStarted, setIsStarted] = useState(false);
 
   useEffect(() => {
-    let scanner: Html5QrcodeScanner | null = null;
+    let html5QrCode: Html5Qrcode | null = null;
+    const elementId = "reader-panitia";
  
-    const timer = setTimeout(() => {
+    const startScanner = async () => {
       try {
+        html5QrCode = new Html5Qrcode(elementId);
+        
         const scannerConfig = {
           fps: 15,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
-          showTorchButtonIfSupported: true,
-          showZoomSliderIfSupported: true,
-          rememberLastUsedCamera: true,
-          supportedScanTypes: [0] // Camera only
         };
- 
-        scanner = new Html5QrcodeScanner(
-          "reader-panitia",
+
+        await html5QrCode.start(
+          { facingMode: "environment" },
           scannerConfig,
-          /* verbose= */ false
-        );
- 
-        scanner.render(
-          (text) => {
-            onScan(text);
+          (decodedText) => {
+            onScan(decodedText);
           },
-          (err) => {
+          (errorMessage) => {
             // Silence noisy per-frame failures
           }
         );
+        setIsStarted(true);
       } catch (err) {
         console.error("Scanner initialization failed:", err);
-        if (onError) onError(String(err));
+        // Fallback
+        try {
+          if (html5QrCode) {
+            await html5QrCode.start(
+              { facingMode: "user" },
+              { fps: 15, qrbox: { width: 250, height: 250 } },
+              onScan,
+              () => {}
+            );
+            setIsStarted(true);
+          }
+        } catch (innerErr) {
+          if (onError) onError(String(innerErr));
+        }
       }
+    };
+
+    const timer = setTimeout(() => {
+      startScanner();
     }, 500);
  
     return () => {
       clearTimeout(timer);
-      if (scanner) {
-        scanner.clear().catch(e => console.warn("Scanner cleanup warning:", e));
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => {
+          html5QrCode?.clear();
+        }).catch(e => console.warn("Scanner cleanup warning:", e));
       }
     };
   }, [onScan, onError, retry]);
  
   return (
     <div className="w-full space-y-4">
-      <div id="reader-panitia" className="w-full bg-slate-900 rounded-[2rem] overflow-hidden [&_video]:rounded-[2rem] [&_img]:hidden border-none! [&_#html5-qrcode-button-camera-permission]:bg-emerald-600 [&_#html5-qrcode-button-camera-permission]:text-white [&_#html5-qrcode-button-camera-permission]:px-6 [&_#html5-qrcode-button-camera-permission]:py-3 [&_#html5-qrcode-button-camera-permission]:rounded-xl [&_#html5-qrcode-button-camera-permission]:font-bold [&_#html5-qrcode-button-camera-permission]:text-xs [&_#html5-qrcode-button-camera-permission]:uppercase [&_#html5-qrcode-button-camera-permission]:tracking-widest [&_#html5-qrcode-anchor-scan-type-change]:hidden"></div>
+      <div className="relative w-full bg-slate-900 rounded-[2rem] overflow-hidden border-none shadow-inner aspect-square flex items-center justify-center">
+        <div id="reader-panitia" className="w-full h-full [&_video]:rounded-[2rem] [&_video]:object-cover border-none!"></div>
+        {!isStarted && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm z-20">
+            <div className="flex flex-col items-center gap-4">
+              <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin" />
+              <p className="text-white font-bold text-[10px] uppercase tracking-widest">Memulai Kamera...</p>
+            </div>
+          </div>
+        )}
+      </div>
       <button 
         onClick={() => setRetry(prev => prev + 1)}
         className="w-full py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-emerald-600 transition-colors flex items-center justify-center gap-2"
