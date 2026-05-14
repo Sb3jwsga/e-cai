@@ -107,6 +107,7 @@ interface PesertaDashboardProps {
 
 export default function PesertaDashboard({ peserta, onLogout }: PesertaDashboardProps) {
   const [activeTab, setActiveTab] = useState('STATUS');
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [dokumentasi, setDokumentasi] = useState<Dokumentasi[]>([]);
@@ -164,15 +165,22 @@ export default function PesertaDashboard({ peserta, onLogout }: PesertaDashboard
                      
                      return (
                         <div key={ev.id} className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm transition-all hover:shadow-md">
-                           <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
-                              <div>
-                                 <h4 className="font-bold text-slate-800 text-lg leading-tight uppercase tracking-tight">{ev.nama_event}</h4>
-                                 <div className="flex items-center gap-2 mt-2">
-                                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg uppercase">{formatDate(ev.tanggal_event)}</span>
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">&bull; {formatTime24(ev.jam_mulai_event)} WIB</span>
-                                 </div>
-                              </div>
-                           </div>
+                               <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
+                               <div>
+                                  <h4 className="font-bold text-slate-800 text-lg leading-tight uppercase tracking-tight">{ev.nama_event}</h4>
+                                  <div className="flex items-center gap-2 mt-2">
+                                     <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg uppercase">{formatDate(ev.tanggal_event)}</span>
+                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">&bull; {formatTime24(ev.jam_mulai_event)} WIB</span>
+                                  </div>
+                               </div>
+                               <button 
+                                 onClick={() => setSelectedEvent(ev)}
+                                 className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 uppercase tracking-wider flex items-center gap-1.5 transition-colors"
+                               >
+                                 <ExternalLink className="w-3.5 h-3.5" />
+                                 Detail Event
+                               </button>
+                            </div>
                            
                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <AttendanceStatus title="Kehadiran Materi" isPresent={!!attendedMateri} time={attendedMateri?.timestamp} />
@@ -222,9 +230,17 @@ export default function PesertaDashboard({ peserta, onLogout }: PesertaDashboard
                         <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-md transition-all">
                            <div className="flex justify-between items-start mb-4">
                               <h4 className="font-bold text-slate-800 tracking-tight uppercase leading-tight">{ev.nama_event}</h4>
-                              <span className="text-[10px] font-bold bg-slate-900 text-white px-3 py-1 rounded-lg tracking-wider">{formatTime24(ev.jam_mulai_event)}</span>
+                              <div className="flex flex-col items-end gap-2">
+                                <span className="text-[10px] font-bold bg-slate-900 text-white px-3 py-1 rounded-lg tracking-wider">{formatTime24(ev.jam_mulai_event)}</span>
+                                <button 
+                                  onClick={() => setSelectedEvent(ev)}
+                                  className="text-[9px] font-bold text-emerald-600 hover:underline uppercase tracking-widest"
+                                >
+                                  Detail
+                                </button>
+                              </div>
                            </div>
-                           <p className="text-sm text-slate-500 leading-relaxed font-medium">{ev.deskripsi_event}</p>
+                           <p className="text-sm text-slate-500 leading-relaxed font-medium line-clamp-2">{ev.deskripsi || ev.deskripsi_event || 'Tidak ada deskripsi'}</p>
                         </div>
                      </div>
                   </div>
@@ -302,6 +318,64 @@ export default function PesertaDashboard({ peserta, onLogout }: PesertaDashboard
                 </a>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Event Detail Modal */}
+      {selectedEvent && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedEvent(null)}></div>
+          <div className="bg-white w-full max-w-xl rounded-[40px] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300">
+            {/* Modal Header */}
+            <div className="bg-slate-900 p-8 sm:p-10 text-white relative">
+              <button 
+                onClick={() => setSelectedEvent(null)}
+                className="absolute top-6 right-6 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              >
+                <QrCode className="w-5 h-5 rotate-45" />
+              </button>
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.3em]">Detail Kegiatan</span>
+                <h3 className="text-3xl font-black tracking-tight leading-tight uppercase">{selectedEvent.nama_event}</h3>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-8 sm:p-10 space-y-8">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tanggal</p>
+                  <div className="flex items-center gap-2 text-slate-800 font-bold">
+                    <Calendar className="w-4 h-4 text-emerald-600" />
+                    <span>{formatDate(selectedEvent.tanggal_event)}</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Waktu</p>
+                  <div className="flex items-center gap-2 text-slate-800 font-bold">
+                    <Clock className="w-4 h-4 text-emerald-600" />
+                    <span>{formatTime24(selectedEvent.jam_mulai_event)} - {selectedEvent.jam_selesai ? formatTime24(selectedEvent.jam_selesai) : 'Selesai'} WIB</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Deskripsi Acara</p>
+                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 italic">
+                  <p className="text-slate-600 leading-relaxed font-medium">
+                    {selectedEvent.deskripsi || selectedEvent.deskripsi_event || 'Penyelenggara belum menyertakan deskripsi detail untuk sesi ini.'}
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setSelectedEvent(null)}
+                className="w-full py-4 bg-emerald-600 text-white font-bold rounded-2xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all uppercase tracking-widest text-xs"
+              >
+                Tutup Detail
+              </button>
+            </div>
           </div>
         </div>
       )}
