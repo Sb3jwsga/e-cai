@@ -7,10 +7,11 @@ import React, { useState, useEffect } from 'react';
 import { User, Peserta, Event, Attendance, AttendanceType, Dokumentasi } from '../types';
 import { db, pullFromSpreadsheet } from '../lib/db';
 import DashboardLayout from '../components/DashboardLayout';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Users, Calendar, BarChart3, Plus, Trash2, Edit, Save, X, Phone, MapPin, Hash, QrCode, ShieldCheck, Clock, Download, RefreshCw, Image, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import QRCode from 'qrcode';
 import { cn } from '../lib/utils';
 
 // Helper to format date as dd/mm/yyyy
@@ -171,12 +172,13 @@ export default function AdminDashboard({ user, onLogout }: AdminDashboardProps) 
     >
       {activeTab === 'DASHBOARD' && (
         <div className="space-y-8">
-          <div className="flex justify-end">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+             <h2 className="text-2xl font-black text-slate-800 tracking-tight">RINGKASAN DATA</h2>
              <button 
                onClick={syncData}
                disabled={isSyncing}
                className={cn(
-                 "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all border",
+                 "w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase transition-all border",
                  isSyncing 
                   ? "bg-slate-100 text-slate-400 border-slate-200" 
                   : "bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 hover:border-emerald-200 shadow-sm"
@@ -187,7 +189,7 @@ export default function AdminDashboard({ user, onLogout }: AdminDashboardProps) 
              </button>
           </div>
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <StatCard label="TOTAL PESERTA" value={peserta.length} color="blue" />
             <StatCard label="TOTAL EVENT" value={events.length} color="purple" />
             <StatCard label="TOTAL STAFF" value={users.length} color="green" />
@@ -485,8 +487,6 @@ function ManagePeserta({
   events: Event[];
   attendance: Attendance[];
 }) {
-  const [selectedEventId, setSelectedEventId] = useState('');
-  const [scanType, setScanType] = useState<AttendanceType>('MATERI');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState<Partial<Peserta>>({});
@@ -503,12 +503,117 @@ function ManagePeserta({
     return matchesSearch && matchesKelompok && matchesDesa;
   });
 
-   const attendanceRecords = attendance.filter(a => 
-    (selectedEventId === '' || String(a.eventId).trim() === String(selectedEventId).trim()) && 
-    String(a.type).trim().toUpperCase() === String(scanType).trim().toUpperCase()
-  );
-
   const [isSaving, setIsSaving] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+
+  const downloadAllQR = async () => {
+    if (filteredPeserta.length === 0) {
+      alert("Tidak ada data peserta yang difilter untuk didownload.");
+      return;
+    }
+    
+    const count = filteredPeserta.length;
+    // Removing window.confirm as it might be blocked in some iframe environments
+    // Instead, we just start the download and show progress immediately.
+
+    setIsDownloading(true);
+    setDownloadProgress(0);
+
+    try {
+      console.log(`[Batch QR PDF] Starting PDF generation for ${count} participants`);
+      
+      // Changed to ID Card size: 53.98mm x 85.6mm (Portrait CR80)
+      const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: [53.98, 85.6],
+        compress: true
+      });
+      
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      for (let i = 0; i < filteredPeserta.length; i++) {
+        const p = filteredPeserta[i];
+        setDownloadProgress(i + 1);
+        
+        if (i > 0) {
+          doc.addPage();
+        }
+
+        // 1. Header Background (Subtle bar at top)
+        doc.setFillColor(241, 245, 249); 
+        doc.rect(0, 0, pageWidth, 18, 'F');
+
+        // 2. Participant Name (Top center)
+        doc.setTextColor(15, 23, 42);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        const name = (p.nama_lengkap || 'NONAME').toUpperCase();
+        const splitName = doc.splitTextToSize(name, pageWidth - 10);
+        doc.text(splitName, pageWidth / 2, 11, { align: 'center' });
+
+        // 3. QR Code Generation
+        try {
+          const qrDataUrl = await QRCode.toDataURL(p.id, {
+            width: 400, 
+            margin: 1,
+            errorCorrectionLevel: 'M',
+            color: { dark: '#000000', light: '#ffffff' }
+          });
+          
+          // 4. Add QR Image (Centered in vertical space)
+          const qrSize = 35;
+          const qrY = 25;
+          doc.addImage(qrDataUrl, 'PNG', (pageWidth - qrSize) / 2, qrY, qrSize, qrSize, undefined, 'FAST');
+        } catch (qrErr) {
+          console.error(`[Batch QR PDF] Error generating QR for participant ${p.id}:`, qrErr);
+          doc.setTextColor(220, 38, 38);
+          doc.setFontSize(8);
+          doc.text(`Gagal QR: ${p.id}`, pageWidth / 2, 40, { align: 'center' });
+        }
+
+        // 5. Footer Background
+        doc.setFillColor(248, 250, 252);
+        doc.rect(0, pageHeight - 20, pageWidth, 20, 'F');
+
+        // 6. ID Info (Large and distinct)
+        doc.setTextColor(5, 150, 105);
+        doc.setFontSize(14);
+        doc.text(p.id || 'N/A', pageWidth / 2, pageHeight - 12, { align: 'center' });
+
+        // 7. Location Info (Small at bottom)
+        doc.setTextColor(100, 116, 139);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        const locationText = `${p.kelompok || '-'} / ${p.desa || '-'}`.toUpperCase();
+        doc.text(locationText, pageWidth / 2, pageHeight - 5, { align: 'center' });
+
+        // Yield to browser
+        if (i % 5 === 0) {
+          await new Promise(r => setTimeout(r, 10));
+        }
+      }
+      
+      console.log('[Batch QR PDF] Generation finished. Saving file...');
+      const dateStr = new Date().toISOString().split('T')[0];
+      const timeStr = Date.now().toString().slice(-6);
+      const fileName = `Daftar_QR_Peserta_${dateStr}_${timeStr}.pdf`;
+      
+      // Using direct doc.save as it is most reliable with jsPDF
+      doc.save(fileName);
+      
+      console.log('[Batch QR PDF] File saved successfully');
+      alert(`Berhasil! ${count} QR Code telah disimpan dalam file PDF.`);
+    } catch (err) {
+      console.error('[Batch QR PDF] Fatal Error during generation:', err);
+      alert('Gagal membuat PDF: ' + (err instanceof Error ? err.message : 'Kesalahan sistem'));
+    } finally {
+      setIsDownloading(false);
+      setDownloadProgress(0);
+    }
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -552,64 +657,54 @@ function ManagePeserta({
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h3 className="font-bold flex items-center gap-3 text-slate-800">
-            <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
-               <Users className="w-5 h-5" />
-             </div>
-             Manajemen Peserta
-          </h3>
-          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <div className="relative flex-1 sm:flex-initial">
-              <input 
-                type="text" 
-                placeholder="Cari Peserta / ID..." 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-xs font-semibold w-full sm:w-64 bg-slate-50 focus:bg-white"
-              />
-              <Users className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <h3 className="font-bold flex items-center gap-3 text-slate-800">
+              <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
+                 <Users className="w-5 h-5" />
+               </div>
+               Manajemen Peserta
+            </h3>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto">
+              <div className="relative flex-1 min-w-[200px] lg:w-64">
+                <input 
+                  type="text" 
+                  placeholder="Cari Peserta / ID..." 
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-xs font-semibold w-full bg-slate-50 focus:bg-white"
+                />
+                <Users className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto flex-1 sm:flex-none">
+                <button
+                  onClick={downloadAllQR}
+                  disabled={isDownloading || filteredPeserta.length === 0}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 bg-white text-slate-700 font-bold text-[10px] sm:text-xs uppercase rounded-xl border border-slate-200 hover:bg-slate-50 transition-all shadow-sm whitespace-nowrap disabled:opacity-50 min-w-0 sm:min-w-[160px]"
+                >
+                  {isDownloading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-emerald-600" />
+                      <span>{downloadProgress}/{filteredPeserta.length}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>Download QR</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => { setIsAdding(true); setFormData({ id: `P${Math.floor(1000 + Math.random() * 9000)}` }); }}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 bg-emerald-600 text-white font-bold text-[10px] sm:text-xs uppercase rounded-xl hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/10 whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" /> Daftar Baru
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => { setIsAdding(true); setFormData({ id: `P${Math.floor(1000 + Math.random() * 9000)}` }); }}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 text-white font-bold text-xs uppercase rounded-xl hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/10 whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" /> Daftar Baru
-            </button>
           </div>
-        </div>
 
         {/* Filters Top Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border-t border-slate-50 pt-6">
-           <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Kontrol Materi</label>
-              <div className="relative">
-                 <select 
-                    value={selectedEventId}
-                    onChange={(e) => setSelectedEventId(e.target.value)}
-                    className="w-full pl-4 pr-10 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-xs font-bold bg-slate-50 focus:bg-white appearance-none"
-                 >
-                    {events.map(ev => (
-                       <option key={ev.id} value={ev.id}>{ev.nama_event}</option>
-                    ))}
-                 </select>
-                 <Calendar className="w-3.5 h-3.5 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
-           </div>
-           <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Tipe Absen</label>
-              <div className="relative">
-                 <select 
-                    value={scanType}
-                    onChange={(e) => setScanType(e.target.value as AttendanceType)}
-                    className="w-full pl-4 pr-10 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-xs font-bold bg-slate-50 focus:bg-white appearance-none"
-                 >
-                    <option value="MATERI">Materi</option>
-                    <option value="MAKAN">Makan</option>
-                 </select>
-                 <Clock className="w-3.5 h-3.5 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
-           </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 border-t border-slate-50 pt-6">
            <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Filter Kelompok</label>
               <div className="relative">
@@ -1090,24 +1185,24 @@ function AttendanceAnalysis({
    return (
       <div className="space-y-6 animate-in fade-in duration-500">
          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                <div className="flex items-center gap-3">
                   <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
                      <BarChart3 className="w-5 h-5" />
                   </div>
                   <h3 className="font-bold text-slate-800">Analisa Kehadiran Peserta</h3>
                </div>
-               <div className="flex items-center gap-3 w-full sm:w-auto">
+               <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto">
                   <button 
                      onClick={syncData}
-                     className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-emerald-600 border border-emerald-100 font-bold text-xs uppercase rounded-xl hover:bg-emerald-50 transition-all shadow-sm"
+                     className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-emerald-600 border border-emerald-100 font-bold text-[10px] sm:text-xs uppercase rounded-xl hover:bg-emerald-50 transition-all shadow-sm whitespace-nowrap"
                   >
                      <RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />
                      {isSyncing ? 'Syncing...' : 'Sync Cloud'}
                   </button>
                   <button 
                      onClick={exportToPDF}
-                     className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white font-bold text-xs uppercase rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10"
+                     className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white font-bold text-[10px] sm:text-xs uppercase rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 whitespace-nowrap"
                   >
                      <Download className="w-4 h-4" /> Export PDF
                   </button>
@@ -1323,14 +1418,14 @@ function ManageStaff({
 
    return (
       <div className="space-y-6 animate-in fade-in duration-500">
-         <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
             <h3 className="font-bold flex items-center gap-3 text-slate-800">
                <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
                  <ShieldCheck className="w-5 h-5" />
                </div>
                Akses Staff & Panitia
             </h3>
-            <button onClick={() => setIsAdding(true)} className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white font-bold text-xs uppercase rounded-xl shadow-md shadow-emerald-500/10 transition-all hover:bg-emerald-700">
+            <button onClick={() => setIsAdding(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 text-white font-bold text-xs uppercase rounded-xl shadow-md shadow-emerald-500/10 transition-all hover:bg-emerald-700">
                <Plus className="w-4 h-4" /> Registrasi User
             </button>
          </div>

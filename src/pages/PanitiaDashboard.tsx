@@ -377,24 +377,24 @@ export default function PanitiaDashboard({ user, onLogout }: PanitiaDashboardPro
         <div className="space-y-6 animate-in fade-in duration-500">
            {/* Header & Search Area */}
            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                 <h3 className="font-bold flex items-center gap-3 text-slate-800">
-                    <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
-                      <Users className="w-5 h-5" />
-                    </div>
-                    Monitoring Peserta
-                 </h3>
-                 <div className="relative w-full md:w-auto">
-                    <input 
-                      type="text" 
-                      placeholder="Cari Peserta / ID..." 
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-xs font-semibold w-full md:w-64 bg-slate-50 focus:bg-white"
-                    />
-                    <Users className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
-                 </div>
-              </div>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+               <h3 className="font-bold flex items-center gap-3 text-slate-800">
+                  <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  Monitoring Peserta
+               </h3>
+               <div className="relative w-full lg:w-auto">
+                  <input 
+                    type="text" 
+                    placeholder="Cari Peserta / ID..." 
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-xs font-semibold w-full lg:w-64 bg-slate-50 focus:bg-white"
+                  />
+                  <Users className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
+               </div>
+            </div>
 
               {/* Advanced Filters */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border-t border-slate-50 pt-6">
